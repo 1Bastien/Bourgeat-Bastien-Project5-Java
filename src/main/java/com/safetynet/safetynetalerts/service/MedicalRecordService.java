@@ -29,9 +29,8 @@ public class MedicalRecordService {
 	}
 
 	@Transactional
-	public MedicalRecord postMedicalRecord(MedicalRecord medicalRecord) {
-		Optional<Person> optionalPerson = personRepository.findByFirstNameAndLastName(
-				medicalRecord.getPerson().getFirstName(), medicalRecord.getPerson().getLastName());
+	public MedicalRecord postMedicalRecord(String firstName, String lastName, MedicalRecord medicalRecord) {
+		Optional<Person> optionalPerson = personRepository.findByFirstNameAndLastName(firstName, lastName);
 
 		if (!optionalPerson.isPresent()) {
 			logger.error("This Person doesn't exists: ", medicalRecord.getPerson());

@@ -50,7 +50,6 @@ public class MedicalRecordServiceTest {
 		TEST_PERSON.setEmail("jaboyd@email.com");
 
 		TEST_MEDICAL_RECORD = new MedicalRecord();
-		TEST_MEDICAL_RECORD.setPerson(TEST_PERSON);
 		TEST_MEDICAL_RECORD.setBirthdate("03/06/1984");
 		TEST_MEDICAL_RECORD.setAllergies(Arrays.asList("nillacilan"));
 		TEST_MEDICAL_RECORD.setMedications(Arrays.asList("aznol:350mg", "hydrapermazol:100mg"));
@@ -63,16 +62,13 @@ public class MedicalRecordServiceTest {
 		when(medicalRecordRepository.findByPerson(eq(TEST_PERSON))).thenReturn(Optional.empty());
 		when(medicalRecordRepository.save(any(MedicalRecord.class))).thenReturn(TEST_MEDICAL_RECORD);
 
-		MedicalRecord result = medicalRecordService.postMedicalRecord(TEST_MEDICAL_RECORD);
+		MedicalRecord result = medicalRecordService.postMedicalRecord("John", "Boyd", TEST_MEDICAL_RECORD);
 
 		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
 		verify(medicalRecordRepository, times(1)).findByPerson(TEST_PERSON);
 		verify(medicalRecordRepository, times(1)).save(TEST_MEDICAL_RECORD);
 
 		assertNotNull(result);
-		
-		System.out.println("Actual Birthdate: " + result.getBirthdate());
-	    System.out.println("Expected Birthdate: " + TEST_MEDICAL_RECORD.getBirthdate());
 		
 		assertEquals("03/06/1984", result.getBirthdate());
 		assertEquals("nillacilan", result.getAllergies().get(0));
@@ -83,6 +79,8 @@ public class MedicalRecordServiceTest {
 
 	@Test
 	public void testPutMedicalRecord() {
+		TEST_MEDICAL_RECORD.setPerson(TEST_PERSON);
+
 		MedicalRecord newMedicalRecord = new MedicalRecord();
 		newMedicalRecord.setBirthdate("12/02/2003");
 		newMedicalRecord.setAllergies(Arrays.asList("peanut"));
