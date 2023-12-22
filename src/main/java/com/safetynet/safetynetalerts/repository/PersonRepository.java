@@ -1,5 +1,6 @@
 package com.safetynet.safetynetalerts.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.repository.CrudRepository;
@@ -11,4 +12,8 @@ import com.safetynet.safetynetalerts.model.Person;
 public interface PersonRepository extends CrudRepository<Person, Long> {
 
 	Optional<Person> findByFirstNameAndLastName(String firstName, String lastName);
+
+	List<Person> findByAddress(String address);
+
+	List<Person> findByCity(String city);
 }
