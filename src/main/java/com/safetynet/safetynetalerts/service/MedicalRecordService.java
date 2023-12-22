@@ -1,5 +1,8 @@
 package com.safetynet.safetynetalerts.service;
 
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
@@ -117,6 +120,16 @@ public class MedicalRecordService {
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to delete this medical record",
 					e);
 		}
+	}
+
+	public int calculateAge(String birthdate) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+		LocalDate birthdateDate = LocalDate.parse(birthdate, formatter);
+
+		LocalDate currentDate = LocalDate.now();
+		Period period = Period.between(birthdateDate, currentDate);
+
+		return period.getYears();
 	}
 
 }
