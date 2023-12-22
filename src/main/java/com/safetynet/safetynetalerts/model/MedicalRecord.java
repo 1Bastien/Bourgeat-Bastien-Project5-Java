@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -25,7 +26,7 @@ public class MedicalRecord {
 	private String birthdate;
 
 	@OneToOne
-	@Column(name = "person_id", unique = true, nullable = false)
+	@JoinColumn(name = "person_id", unique = true, nullable = false)
 	private Person person;
 
 	private List<String> medications;
