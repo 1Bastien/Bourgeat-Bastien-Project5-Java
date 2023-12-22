@@ -1,5 +1,6 @@
 package com.safetynet.safetynetalerts.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.repository.CrudRepository;
@@ -11,4 +12,6 @@ import com.safetynet.safetynetalerts.model.Firestation;
 public interface FirestationRepository extends CrudRepository<Firestation, Long> {
 
 	Optional<Firestation> findByAddress(String address);
+
+	List<Firestation> findAllByStation(int stationNumber);
 }
