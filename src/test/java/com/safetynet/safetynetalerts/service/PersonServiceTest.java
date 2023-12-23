@@ -2,9 +2,12 @@ package com.safetynet.safetynetalerts.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +23,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.safetynet.safetynetalerts.model.Firestation;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
@@ -58,8 +63,7 @@ public class PersonServiceTest {
 
 	@Test
 	public void testPostPerson() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd")))
-				.thenReturn(Optional.empty());
+		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
 		when(personRepository.save(any(Person.class))).thenReturn(TEST_PERSON);
 
 		Person result = personService.postPerson(TEST_PERSON);
@@ -75,6 +79,20 @@ public class PersonServiceTest {
 		assertEquals("jaboyd@email.com", result.getEmail());
 		assertEquals("841-874-6512", result.getPhone());
 		assertEquals("97451", result.getZip());
+	}
+
+	@Test
+	void testPostPersonConflict() {
+		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.postPerson(TEST_PERSON));
+
+		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("This person already exists"));
+
+		verify(personRepository, times(1)).findByFirstNameAndLastName(eq("John"), eq("Boyd"));
+		verify(personRepository, never()).save(any());
 	}
 
 	@Test
@@ -103,6 +121,20 @@ public class PersonServiceTest {
 	}
 
 	@Test
+	void testPutPersonNotFound() {
+		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.putPerson("John", "Boyd", TEST_PERSON));
+
+		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("This person doesn't exist"));
+
+		verify(personRepository, times(1)).findByFirstNameAndLastName(eq("John"), eq("Boyd"));
+		verify(personRepository, never()).save(any());
+	}
+
+	@Test
 	public void testDeletePerson() {
 		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
 
@@ -116,39 +148,59 @@ public class PersonServiceTest {
 	}
 
 	@Test
+	void testDeletePersonNotFound() {
+		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.deletePerson("John", "Boyd"));
+
+		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("This person doesn't exist"));
+
+		verify(personRepository, times(1)).findByFirstNameAndLastName(eq("John"), eq("Boyd"));
+		verify(personRepository, never()).delete(any());
+	}
+
+	@Test
 	public void getChildsByAddress() {
 		Person child = new Person();
 		child.setFirstName("John");
 		child.setLastName("Doe");
-		child.setAddress("123 Main St");
+		child.setAddress("1509 Culver St");
+		child.setCity("Culver");
+		child.setZip("97451");
+		child.setPhone("111-222-3333");
+		child.setEmail("test@test.com");
 
-		MedicalRecord medicalRecord = new MedicalRecord();
-		medicalRecord.setBirthdate("01/15/2005");
-		medicalRecord.setPerson(child);
-		child.setMedicalRecord(medicalRecord);
+		MedicalRecord childMedicalRecord = new MedicalRecord();
+		childMedicalRecord.setBirthdate("01/15/2010");
+		child.setMedicalRecord(childMedicalRecord);
 
-		List<Person> persons = Arrays.asList(child);
+		MedicalRecord adultMedicalRecord = new MedicalRecord();
+		adultMedicalRecord.setBirthdate("01/15/1980");
+		TEST_PERSON.setMedicalRecord(adultMedicalRecord);
 
-		when(personRepository.findByAddress(any())).thenReturn(persons);
-		when(medicalRecordService.calculateAge("01/15/2005")).thenReturn(17);
+		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList(child, TEST_PERSON));
+		when(medicalRecordService.calculateAge(anyString())).thenReturn(13).thenReturn(43);
 
-		List<Map<String, Object>> result = personService.getChildsByAddress("123 Main St");
+		List<Map<String, Object>> result = personService.getChildsByAddress("1509 Culver St");
 
 		verify(personRepository, times(1)).findByAddress(any());
-		verify(medicalRecordService, times(1)).calculateAge("01/15/2005");
+		verify(medicalRecordService, times(3)).calculateAge(any());
 
 		assertNotNull(result);
-		assertEquals(1, result.size());
 
 		Map<String, Object> childMap = result.get(0);
 		assertEquals("John", childMap.get("firstName"));
 		assertEquals("Doe", childMap.get("lastName"));
-		assertEquals(17, childMap.get("age"));
+		assertEquals(13, childMap.get("age"));
 
 		@SuppressWarnings("unchecked")
 		List<Map<String, Object>> otherMembers = (List<Map<String, Object>>) childMap.get("otherMembers");
 		assertNotNull(otherMembers);
-		assertEquals(0, otherMembers.size());
+		assertEquals("John", otherMembers.get(0).get("firstName"));
+		assertEquals("Boyd", otherMembers.get(0).get("lastName"));
+		assertEquals(43, otherMembers.get(0).get("age"));
 	}
 
 	@Test
@@ -205,6 +257,37 @@ public class PersonServiceTest {
 	}
 
 	@Test
+	public void getPersonsAndFirestationByAddressNoPerson() {
+		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList());
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.getPersonsAndFirestationByAddress("123 Main St"));
+
+		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("No residents found for this address"));
+
+		verify(personRepository, times(1)).findByAddress("123 Main St");
+		verify(firestationRepository, never()).findByAddress(any());
+		verify(medicalRecordService, never()).calculateAge(any());
+	}
+
+	@Test
+	public void getPersonsAndFirestationByAddressNoFirestation() {
+		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList(TEST_PERSON));
+		when(firestationRepository.findByAddress(any())).thenReturn(Optional.empty());
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.getPersonsAndFirestationByAddress("123 Main St"));
+
+		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("No firestation found for this address"));
+
+		verify(personRepository, times(1)).findByAddress("123 Main St");
+		verify(firestationRepository, times(1)).findByAddress("123 Main St");
+		verify(medicalRecordService, never()).calculateAge(any());
+	}
+
+	@Test
 	public void getPersonInfoByFirstNameAndLastName() {
 		String firstName = "John";
 		String lastName = "Doe";
@@ -250,6 +333,23 @@ public class PersonServiceTest {
 	}
 
 	@Test
+	public void getPersonInfoByFirstNameAndLastNameNotFound() {
+		String firstName = "John";
+		String lastName = "Doe";
+
+		when(personRepository.findByFirstNameAndLastName(firstName, lastName)).thenReturn(Optional.empty());
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.getPersonInfoByFirstNameAndLastName(firstName, lastName));
+
+		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("No person found with the given name"));
+
+		verify(personRepository, times(1)).findByFirstNameAndLastName(firstName, lastName);
+		verify(medicalRecordService, never()).calculateAge(any());
+	}
+
+	@Test
 	public void getCommunityEmails() {
 		String city = "Culver";
 
@@ -269,5 +369,20 @@ public class PersonServiceTest {
 		assertEquals(2, result.size());
 		assertTrue(result.contains("john.doe@example.com"));
 		assertTrue(result.contains("jane.smith@example.com"));
+	}
+
+	@Test
+	public void getCommunityEmailsNoPerson() {
+		String city = "Culver";
+
+		when(personRepository.findByCity(city)).thenReturn(Arrays.asList());
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> personService.getCommunityEmails(city));
+
+		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("No residents found for the city"));
+
+		verify(personRepository, times(1)).findByCity(city);
 	}
 }
