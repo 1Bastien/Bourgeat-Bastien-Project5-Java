@@ -102,13 +102,13 @@ public class FirestationService {
 
 	@Transactional(readOnly = true)
 	public List<Map<String, Object>> getListOfPersonByFirestation(int stationNumber) {
-		try {
-			List<Firestation> firestations = firestationRepository.findAllByStation(stationNumber);
+		List<Firestation> firestations = firestationRepository.findAllByStation(stationNumber);
 
-			if (firestations.isEmpty()) {
-				logger.error("This firestation doesn't exist");
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This firestation doesn't exist");
-			}
+		if (firestations.isEmpty()) {
+			logger.error("This firestation doesn't exist");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This firestation doesn't exist");
+		}
+		try {
 
 			int adultCount = 0;
 			int childCount = 0;
@@ -153,14 +153,14 @@ public class FirestationService {
 
 	@Transactional(readOnly = true)
 	public List<String> getPhoneNumbersByFirestation(int firestationNumber) {
+		List<Firestation> firestations = firestationRepository.findAllByStation(firestationNumber);
+
+		if (firestations.isEmpty()) {
+			logger.error("No firestation found for this number");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No firestation found for this number");
+		}
+
 		try {
-			List<Firestation> firestations = firestationRepository.findAllByStation(firestationNumber);
-
-			if (firestations.isEmpty()) {
-				logger.error("No firestation found for this number");
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No firestation found for this number");
-			}
-
 			List<String> phoneNumbers = new ArrayList<>();
 
 			for (Firestation firestation : firestations) {
@@ -185,11 +185,6 @@ public class FirestationService {
 
 			for (Integer stationNumber : stationNumbers) {
 				List<Firestation> firestations = firestationRepository.findAllByStation(stationNumber);
-
-				if (firestations.isEmpty()) {
-					logger.error("No firestation found for this number");
-					throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No firestation found for this number");
-				}
 
 				for (Firestation firestation : firestations) {
 					List<Person> persons = personRepository.findByAddress(firestation.getAddress());
