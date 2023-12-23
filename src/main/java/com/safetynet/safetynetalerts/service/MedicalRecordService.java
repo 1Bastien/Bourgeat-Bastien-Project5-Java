@@ -37,15 +37,13 @@ public class MedicalRecordService {
 
 		if (!optionalPerson.isPresent()) {
 			logger.error("This Person doesn't exists: ", medicalRecord.getPerson());
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This Person doesn't exists: "
-					+ medicalRecord.getPerson().getFirstName() + " " + medicalRecord.getPerson().getLastName());
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This Person doesn't exists: ");
 		}
 
 		if (medicalRecordRepository.findByPerson(optionalPerson.get()).isPresent()) {
 			logger.error("This medical record already exists: {}", medicalRecord);
 			throw new ResponseStatusException(HttpStatus.CONFLICT,
-					"Medical record with ID: " + medicalRecord.getPerson().getFirstName() + " "
-							+ medicalRecord.getPerson().getLastName() + " already exists");
+					"This Medical record already exists");
 		}
 
 		try {
