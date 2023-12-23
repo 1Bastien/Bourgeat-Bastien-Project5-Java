@@ -43,8 +43,7 @@ public class PersonService {
 
 		if (personRepository.findByFirstNameAndLastName(person.getFirstName(), person.getLastName()).isPresent()) {
 			logger.error("This person already exists: {}", person);
-			throw new ResponseStatusException(HttpStatus.CONFLICT,
-					"Person with ID: " + person.getFirstName() + " " + person.getLastName() + " already exists");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This person already exists");
 		}
 
 		try {
@@ -109,61 +108,57 @@ public class PersonService {
 		try {
 			List<Person> persons = personRepository.findByAddress(address);
 
-			if (persons.isEmpty()) {
-				logger.error("no person exists for this address");
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no person exists for this address");
-			}
-
 			List<Map<String, Object>> result = new ArrayList<>();
 
-			for (Person child : persons) {
-				String birthDate = child.getMedicalRecord().getBirthdate();
+			for (Person person : persons) {
+				String birthDate = person.getMedicalRecord().getBirthdate();
 				int age = medicalRecordService.calculateAge(birthDate);
 
 				if (age <= 18) {
 					Map<String, Object> childMap = new HashMap<>();
-					childMap.put("firstName", child.getFirstName());
-					childMap.put("lastName", child.getLastName());
+					childMap.put("firstName", person.getFirstName());
+					childMap.put("lastName", person.getLastName());
 					childMap.put("age", age);
 
 					List<Map<String, Object>> otherMembers = new ArrayList<>();
 
 					for (Person otherPerson : persons) {
-						if (!otherPerson.equals(child)) {
+						if (!otherPerson.equals(person)) {
 							Map<String, Object> otherPersonMap = new HashMap<>();
 							otherPersonMap.put("firstName", otherPerson.getFirstName());
 							otherPersonMap.put("lastName", otherPerson.getLastName());
+							otherPersonMap.put("age",
+									medicalRecordService.calculateAge(otherPerson.getMedicalRecord().getBirthdate()));
 							otherMembers.add(otherPersonMap);
 						}
 					}
 
 					childMap.put("otherMembers", otherMembers);
-
 					result.add(childMap);
 				}
 			}
 			return result;
 		} catch (Exception e) {
-			logger.error("Unable to get childs by address", e);
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to get childs by address", e);
+			logger.error("Unable to get persons by address", e);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to get persons by address", e);
 		}
 	}
 
 	@Transactional(readOnly = true)
 	public List<Map<String, Object>> getPersonsAndFirestationByAddress(String address) {
+		List<Person> residents = personRepository.findByAddress(address);
+
+		if (residents.isEmpty()) {
+			logger.error("No residents found for this address");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No residents found for this address");
+		}
+
+		Optional<Firestation> firestation = firestationRepository.findByAddress(address);
+		if (firestation.isEmpty()) {
+			logger.error("No firestation found for this address");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No firestation found for this address");
+		}
 		try {
-			List<Person> residents = personRepository.findByAddress(address);
-
-			if (residents.isEmpty()) {
-				logger.error("No residents found for this address");
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No residents found for this address");
-			}
-
-			Optional<Firestation> firestation = firestationRepository.findByAddress(address);
-			if (firestation.isEmpty()) {
-				logger.error("No firestation found for this address");
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No firestation found for this address");
-			}
 
 			int firestationNumber = firestation.get().getStation();
 
@@ -199,13 +194,13 @@ public class PersonService {
 
 	@Transactional(readOnly = true)
 	public List<Map<String, Object>> getPersonInfoByFirstNameAndLastName(String firstName, String lastName) {
-		try {
-			Optional<Person> matchingPersons = personRepository.findByFirstNameAndLastName(firstName, lastName);
+		Optional<Person> matchingPersons = personRepository.findByFirstNameAndLastName(firstName, lastName);
 
-			if (matchingPersons.isEmpty()) {
-				logger.error("No person found with the given name: {} {}", firstName, lastName);
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No person found with the given name");
-			}
+		if (matchingPersons.isEmpty()) {
+			logger.error("No person found with the given name: {} {}", firstName, lastName);
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No person found with the given name");
+		}
+		try {
 
 			Person person = matchingPersons.get();
 			List<Map<String, Object>> result = new ArrayList<>();
@@ -234,13 +229,13 @@ public class PersonService {
 
 	@Transactional(readOnly = true)
 	public List<String> getCommunityEmails(String city) {
-		try {
-			List<Person> residents = personRepository.findByCity(city);
+		List<Person> residents = personRepository.findByCity(city);
 
-			if (residents.isEmpty()) {
-				logger.error("No residents found for the city: {}", city);
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No residents found for the city");
-			}
+		if (residents.isEmpty()) {
+			logger.error("No residents found for the city: {}", city);
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No residents found for the city");
+		}
+		try {
 
 			return residents.stream().map(Person::getEmail).collect(Collectors.toList());
 		} catch (Exception e) {
