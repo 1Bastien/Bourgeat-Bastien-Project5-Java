@@ -169,10 +169,10 @@ public class PersonService {
 				residentMap.put("firstName", resident.getFirstName());
 				residentMap.put("lastName", resident.getLastName());
 				residentMap.put("phone", resident.getPhone());
-				residentMap.put("age", medicalRecordService.calculateAge(resident.getMedicalRecord().getBirthdate()));
 
 				MedicalRecord medicalRecord = resident.getMedicalRecord();
 				if (medicalRecord != null) {
+					residentMap.put("age", medicalRecordService.calculateAge(medicalRecord.getBirthdate()));
 					residentMap.put("medications", medicalRecord.getMedications());
 					residentMap.put("allergies", medicalRecord.getAllergies());
 				}
