@@ -82,7 +82,7 @@ public class MedicalRecordServiceTest {
 	}
 
 	@Test
-	void testPostMedicalRecordPersonNotFound() {
+	public void testPostMedicalRecordPersonNotFound() {
 		String firstName = "John";
 		String lastName = "Doe";
 		MedicalRecord medicalRecord = new MedicalRecord();
@@ -104,7 +104,7 @@ public class MedicalRecordServiceTest {
 	}
 
 	@Test
-	void testPostMedicalRecordConflict() {
+	public void testPostMedicalRecordConflict() {
 		String firstName = "John";
 		String lastName = "Boyd";
 
@@ -248,7 +248,7 @@ public class MedicalRecordServiceTest {
 	}
 
 	@Test
-	public void calculateAgeTest() {
+	public void testCalculateAge() {
 		String birthdate = "03/06/1984";
 		int result = medicalRecordService.calculateAge(birthdate);
 

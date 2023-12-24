@@ -155,7 +155,7 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void getListOfPersonByFirestation() {
+	public void testGetListOfPersonByFirestation() {
 		Person person = new Person();
 		person.setFirstName("John");
 		person.setLastName("Boyd");
@@ -200,7 +200,7 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void getListOfPersonByFirestationWhenChild() {
+	public void testGetListOfPersonByFirestationWhenChild() {
 		Person person = new Person();
 		person.setFirstName("John");
 		person.setLastName("Boyd");
@@ -245,7 +245,7 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void getListOfPersonByFirestationNotFound() {
+	public void testGetListOfPersonByFirestationNotFound() {
 		when(firestationRepository.findAllByStation(anyInt())).thenReturn(Collections.emptyList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -260,7 +260,7 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void getPhoneNumbersByFirestation() {
+	public void testGetPhoneNumbersByFirestation() {
 		Firestation firestation = new Firestation();
 		firestation.setStation(1);
 		firestation.setAddress("123 Main St");
@@ -289,7 +289,7 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void getPhoneNumbersByFirestationNotFound() {
+	public void testGetPhoneNumbersByFirestationNotFound() {
 		when(firestationRepository.findAllByStation(TEST_FIRESTATION.getStation())).thenReturn(Arrays.asList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -303,7 +303,7 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void getPersonsByStations() {
+	public void testGetPersonsByStations() {
 		Firestation firestation1 = new Firestation();
 		firestation1.setStation(1);
 		firestation1.setAddress("123 Main St");

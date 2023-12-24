@@ -82,7 +82,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	void testPostPersonConflict() {
+	public void testPostPersonConflict() {
 		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -121,7 +121,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	void testPutPersonNotFound() {
+	public void testPutPersonNotFound() {
 		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -148,7 +148,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	void testDeletePersonNotFound() {
+	public void testDeletePersonNotFound() {
 		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -162,7 +162,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getChildsByAddress() {
+	public void testGetChildsByAddress() {
 		Person child = new Person();
 		child.setFirstName("John");
 		child.setLastName("Doe");
@@ -204,7 +204,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getPersonsAndFirestationByAddress() {
+	public void testGetPersonsAndFirestationByAddress() {
 		Person person = new Person();
 		person.setFirstName("John");
 		person.setLastName("Doe");
@@ -257,7 +257,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getPersonsAndFirestationByAddressNoPerson() {
+	public void testGetPersonsAndFirestationByAddressNoPerson() {
 		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -272,7 +272,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getPersonsAndFirestationByAddressNoFirestation() {
+	public void testGetPersonsAndFirestationByAddressNoFirestation() {
 		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList(TEST_PERSON));
 		when(firestationRepository.findByAddress(any())).thenReturn(Optional.empty());
 
@@ -288,7 +288,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getPersonInfoByFirstNameAndLastName() {
+	public void testGetPersonInfoByFirstNameAndLastName() {
 		String firstName = "John";
 		String lastName = "Doe";
 
@@ -333,7 +333,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getPersonInfoByFirstNameAndLastNameNotFound() {
+	public void testGetPersonInfoByFirstNameAndLastNameNotFound() {
 		String firstName = "John";
 		String lastName = "Doe";
 
@@ -350,7 +350,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getCommunityEmails() {
+	public void testGetCommunityEmails() {
 		String city = "Culver";
 
 		Person person1 = new Person();
@@ -372,7 +372,7 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void getCommunityEmailsNoPerson() {
+	public void testGetCommunityEmailsNoPerson() {
 		String city = "Culver";
 
 		when(personRepository.findByCity(city)).thenReturn(Arrays.asList());

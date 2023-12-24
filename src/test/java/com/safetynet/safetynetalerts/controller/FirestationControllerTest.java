@@ -106,7 +106,7 @@ public class FirestationControllerTest {
 	}
 	
 	@Test
-	public void testGetResidentsByStations() throws Exception {
+	public void testGetPersonsByStations() throws Exception {
 		List<Map<String, Object>> persons = new ArrayList<>();
 		
 		Map<String, Object> person = new HashMap<>();
