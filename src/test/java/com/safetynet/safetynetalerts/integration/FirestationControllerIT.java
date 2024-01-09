@@ -36,6 +36,13 @@ public class FirestationControllerIT {
 				FirestationInfoDTO.class);
 
 		assertNotNull(firestationInfoDTO);
+		assertNotNull(firestationInfoDTO.getResidents());
+		assertNotNull(firestationInfoDTO.getResidents().get(0).getFirstName());
+		assertNotNull(firestationInfoDTO.getResidents().get(0).getLastName());
+		assertNotNull(firestationInfoDTO.getResidents().get(0).getAddress());
+		assertNotNull(firestationInfoDTO.getResidents().get(0).getPhone());
+		assertNotNull(firestationInfoDTO.getAdultCount());
+		assertNotNull(firestationInfoDTO.getChildCount());
 	}
 
 	@Test
@@ -47,6 +54,7 @@ public class FirestationControllerIT {
 				PhoneNumbersDTO.class);
 
 		assertNotNull(phoneNumbersDTO);
+		assertNotNull(phoneNumbersDTO.getPhoneNumbers());
 	}
 
 	@Test
@@ -58,6 +66,13 @@ public class FirestationControllerIT {
 				PersonsByStationsDTO.class);
 
 		assertNotNull(personsByStationsDTO);
+		assertNotNull(personsByStationsDTO.getPersonsByStations());
+		assertNotNull(personsByStationsDTO.getPersonsByStations().get(0).getFirstName());
+		assertNotNull(personsByStationsDTO.getPersonsByStations().get(0).getLastName());
+		assertNotNull(personsByStationsDTO.getPersonsByStations().get(0).getAddress());
+		assertNotNull(personsByStationsDTO.getPersonsByStations().get(0).getAge());
+		assertNotNull(personsByStationsDTO.getPersonsByStations().get(0).getPhone());
+		assertNotNull(personsByStationsDTO.getPersonsByStations().get(0).getFirestationNumber());
 	}
 
 }

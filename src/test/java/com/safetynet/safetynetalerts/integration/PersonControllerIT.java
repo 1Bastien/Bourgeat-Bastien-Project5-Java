@@ -38,6 +38,14 @@ public class PersonControllerIT {
 				ListChildDTO.class);
 
 		assertNotNull(listChildDTO);
+		assertNotNull(listChildDTO.getChildren());
+		assertNotNull(listChildDTO.getChildren().get(0).getFirstName());
+		assertNotNull(listChildDTO.getChildren().get(0).getLastName());
+		assertNotNull(listChildDTO.getChildren().get(0).getAge());
+		assertNotNull(listChildDTO.getChildren().get(0).getOtherMembers());
+		assertNotNull(listChildDTO.getChildren().get(0).getOtherMembers().get(0).getFirstName());
+		assertNotNull(listChildDTO.getChildren().get(0).getOtherMembers().get(0).getLastName());
+		assertNotNull(listChildDTO.getChildren().get(0).getOtherMembers().get(0).getAge());
 	}
 
 	@Test
@@ -50,6 +58,13 @@ public class PersonControllerIT {
 				.readValue(result.getResponse().getContentAsString(), ResidentsAndFirestationDTO.class);
 
 		assertNotNull(residentsAndFirestationDTO);
+		assertNotNull(residentsAndFirestationDTO.getResidents());
+		assertNotNull(residentsAndFirestationDTO.getResidents().get(0).getFirstName());
+		assertNotNull(residentsAndFirestationDTO.getResidents().get(0).getLastName());
+		assertNotNull(residentsAndFirestationDTO.getResidents().get(0).getPhone());
+		assertNotNull(residentsAndFirestationDTO.getResidents().get(0).getAge());
+		assertNotNull(residentsAndFirestationDTO.getFirestationInfo());
+		assertNotNull(residentsAndFirestationDTO.getFirestationInfo().getFirestationNumber());
 	}
 
 	@Test
@@ -61,6 +76,12 @@ public class PersonControllerIT {
 				PersonInfoDTO.class);
 
 		assertNotNull(personInfoDTO);
+		assertNotNull(personInfoDTO.getFirstName());
+		assertNotNull(personInfoDTO.getLastName());
+		assertNotNull(personInfoDTO.getAddress());
+		assertNotNull(personInfoDTO.getEmail());
+		assertNotNull(personInfoDTO.getAge());
+		assertNotNull(personInfoDTO.getFirestationNumber());
 	}
 
 	@Test
@@ -73,6 +94,7 @@ public class PersonControllerIT {
 				CommunityEmailsDTO.class);
 
 		assertNotNull(communityEmailsDTO);
+		assertNotNull(communityEmailsDTO.getEmails());
 	}
 
 }
