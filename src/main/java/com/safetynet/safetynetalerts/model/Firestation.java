@@ -1,12 +1,16 @@
-package com.safetynet.safetynetalerts.DTO;
+package com.safetynet.safetynetalerts.model;
 
 import org.hibernate.validator.constraints.Length;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
-public class FirestationDTO {
+@Entity
+public class Firestation {
 
+	@Id
 	@NotNull
 	@Length(min = 3, max = 50)
 	private String address;
@@ -14,9 +18,6 @@ public class FirestationDTO {
 	@NotNull
 	@Positive
 	private int station;
-
-	public FirestationDTO() {
-	}
 
 	public String getAddress() {
 		return address;
@@ -33,4 +34,5 @@ public class FirestationDTO {
 	public void setStation(int station) {
 		this.station = station;
 	}
+
 }

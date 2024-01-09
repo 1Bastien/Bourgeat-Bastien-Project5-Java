@@ -1,18 +1,23 @@
-package com.safetynet.safetynetalerts.DTO;
+package com.safetynet.safetynetalerts.model;
 
 import java.util.List;
 
 import org.hibernate.validator.constraints.Length;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
-public class MedicalRecordDTO {
+@Entity
+public class MedicalRecord {
 
+	@Id
 	@NotNull
 	@Length(min = 3, max = 30)
 	private String firstName;
 
+	@Id
 	@NotNull
 	@Length(min = 3, max = 30)
 	private String lastName;
@@ -24,9 +29,6 @@ public class MedicalRecordDTO {
 	private List<String> medications;
 
 	private List<String> allergies;
-
-	public MedicalRecordDTO() {
-	}
 
 	public String getFirstName() {
 		return firstName;

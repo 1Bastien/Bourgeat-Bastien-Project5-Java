@@ -1,17 +1,25 @@
-package com.safetynet.safetynetalerts.DTO;
+package com.safetynet.safetynetalerts.model;
 
 import org.hibernate.validator.constraints.Length;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
-public class PersonDTO {
+@Entity
+@Table(uniqueConstraints = { @UniqueConstraint(columnNames = { "firstName", "lastName" }) })
+public class Person {
 
+	@Id
 	@NotNull
 	@Length(min = 3, max = 30)
 	private String firstName;
 
+	@Id
 	@NotNull
 	@Length(min = 3, max = 30)
 	private String lastName;
@@ -35,9 +43,6 @@ public class PersonDTO {
 	@NotNull
 	@Email
 	private String email;
-
-	public PersonDTO() {
-	}
 
 	public String getFirstName() {
 		return firstName;

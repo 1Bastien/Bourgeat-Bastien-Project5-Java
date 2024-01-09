@@ -5,17 +5,17 @@ import java.io.IOException;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.safetynet.safetynetalerts.DTO.FirestationDTO;
-import com.safetynet.safetynetalerts.DTO.MedicalRecordDTO;
-import com.safetynet.safetynetalerts.DTO.PersonDTO;
+import com.safetynet.safetynetalerts.model.Firestation;
+import com.safetynet.safetynetalerts.model.MedicalRecord;
+import com.safetynet.safetynetalerts.model.Person;
 
 public class DataStore {
 
-	private List<PersonDTO> persons;
+	private List<Person> persons;
 
-	private List<FirestationDTO> firestations;
+	private List<Firestation> firestations;
 
-	private List<MedicalRecordDTO> medicalrecords;
+	private List<MedicalRecord> medicalrecords;
 
 	public void saveToFile(ObjectMapper objectMapper) throws IOException {
 		File file = new File("src/main/resources/data.json");
@@ -29,27 +29,27 @@ public class DataStore {
 		}
 	}
 
-	public List<PersonDTO> getPersons() {
+	public List<Person> getPersons() {
 		return persons;
 	}
 
-	public void setPersons(List<PersonDTO> persons) {
+	public void setPersons(List<Person> persons) {
 		this.persons = persons;
 	}
 
-	public List<FirestationDTO> getFirestations() {
+	public List<Firestation> getFirestations() {
 		return firestations;
 	}
 
-	public void setFirestations(List<FirestationDTO> firestations) {
+	public void setFirestations(List<Firestation> firestations) {
 		this.firestations = firestations;
 	}
 
-	public List<MedicalRecordDTO> getMedicalrecords() {
+	public List<MedicalRecord> getMedicalrecords() {
 		return medicalrecords;
 	}
 
-	public void setMedicalrecords(List<MedicalRecordDTO> medicalrecords) {
+	public void setMedicalrecords(List<MedicalRecord> medicalrecords) {
 		this.medicalrecords = medicalrecords;
 	}
 }
