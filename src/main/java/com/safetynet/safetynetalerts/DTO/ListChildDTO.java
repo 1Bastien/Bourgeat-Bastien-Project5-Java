@@ -14,7 +14,7 @@ public class ListChildDTO {
 		this.children = children;
 	}
 
-	public class ChildDTO {
+	public static class ChildDTO {
 
 		private String firstName;
 
@@ -58,7 +58,7 @@ public class ListChildDTO {
 
 	}
 
-	public class OtherPersonDTO {
+	public static class OtherPersonDTO {
 
 		private String firstName;
 

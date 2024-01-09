@@ -117,7 +117,7 @@ public class PersonService {
 				int age = medicalRecordService.calculateAge(birthDate);
 
 				if (age <= 18) {
-					ListChildDTO.ChildDTO childDTO = result.new ChildDTO();
+					ListChildDTO.ChildDTO childDTO = new ListChildDTO.ChildDTO();
 					childDTO.setFirstName(person.getFirstName());
 					childDTO.setLastName(person.getLastName());
 					childDTO.setAge(age);
@@ -125,7 +125,7 @@ public class PersonService {
 
 					for (Person otherPerson : persons) {
 						if (!otherPerson.equals(person)) {
-							ListChildDTO.OtherPersonDTO otherPersonDTO = result.new OtherPersonDTO();
+							ListChildDTO.OtherPersonDTO otherPersonDTO = new ListChildDTO.OtherPersonDTO();
 							otherPersonDTO.setFirstName(otherPerson.getFirstName());
 							otherPersonDTO.setLastName(otherPerson.getLastName());
 							otherPersonDTO.setAge(medicalRecordService.calculateAge(medicalRecordCRUD
