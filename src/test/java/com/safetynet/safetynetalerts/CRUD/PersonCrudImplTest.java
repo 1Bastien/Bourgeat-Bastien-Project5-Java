@@ -1,4 +1,4 @@
-package com.safetynet.safetyalerts.CRUD;
+package com.safetynet.safetynetalerts.CRUD;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,7 +18,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.safetynet.safetynetalerts.CRUD.PersonCrudImpl;
 import com.safetynet.safetynetalerts.configuration.DataStore;
 import com.safetynet.safetynetalerts.model.Person;
 

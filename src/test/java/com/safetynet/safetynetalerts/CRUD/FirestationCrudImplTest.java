@@ -1,4 +1,4 @@
-package com.safetynet.safetyalerts.CRUD;
+package com.safetynet.safetynetalerts.CRUD;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.times;
@@ -17,7 +17,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.safetynet.safetynetalerts.CRUD.FirestationCrudImpl;
 import com.safetynet.safetynetalerts.configuration.DataStore;
 import com.safetynet.safetynetalerts.model.Firestation;
 
