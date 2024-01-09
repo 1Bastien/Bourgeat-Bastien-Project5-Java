@@ -1,10 +1,8 @@
 package com.safetynet.safetynetalerts.service;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
@@ -14,40 +12,49 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.safetynet.safetynetalerts.CRUD.FirestationCRUD;
+import com.safetynet.safetynetalerts.CRUD.MedicalRecordCRUD;
+import com.safetynet.safetynetalerts.CRUD.PersonCRUD;
+import com.safetynet.safetynetalerts.DTO.CommunityEmailsDTO;
+import com.safetynet.safetynetalerts.DTO.ListChildDTO;
+import com.safetynet.safetynetalerts.DTO.PersonInfoDTO;
+import com.safetynet.safetynetalerts.DTO.ResidentsAndFirestationDTO;
 import com.safetynet.safetynetalerts.model.Firestation;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
 import com.safetynet.safetynetalerts.model.Person;
-import com.safetynet.safetynetalerts.repository.FirestationRepository;
-import com.safetynet.safetynetalerts.repository.PersonRepository;
 
 @Service
 public class PersonService {
 
 	private static final Logger logger = LogManager.getLogger("PersonService");
 
-	private PersonRepository personRepository;
+	private PersonCRUD personCRUD;
 
 	private MedicalRecordService medicalRecordService;
 
-	private FirestationRepository firestationRepository;
+	private MedicalRecordCRUD medicalRecordCRUD;
 
-	public PersonService(PersonRepository personRepository, MedicalRecordService medicalRecordService,
-			FirestationRepository firestationRepository) {
-		this.personRepository = personRepository;
+	private FirestationCRUD firestationCRUD;
+
+	public PersonService(PersonCRUD personCRUD, MedicalRecordService medicalRecordService,
+			MedicalRecordCRUD medicalRecordCRUD, FirestationCRUD firestationCRUD) {
+		this.personCRUD = personCRUD;
 		this.medicalRecordService = medicalRecordService;
-		this.firestationRepository = firestationRepository;
+		this.medicalRecordCRUD = medicalRecordCRUD;
+		this.firestationCRUD = firestationCRUD;
 	}
 
 	@Transactional
-	public Person postPerson(Person person) {
+	public Person postPerson(Person person) throws IOException {
 
-		if (personRepository.findByFirstNameAndLastName(person.getFirstName(), person.getLastName()).isPresent()) {
+		if (personCRUD.findByFirstNameAndLastName(person.getFirstName(), person.getLastName()) != null) {
 			logger.error("This person already exists: {}", person);
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "This person already exists");
 		}
 
 		try {
-			return personRepository.save(person);
+
+			return personCRUD.save(person);
 		} catch (Exception e) {
 			logger.error("Unable to create a new person", e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create a new person", e);
@@ -55,14 +62,12 @@ public class PersonService {
 	}
 
 	@Transactional
-	public Person putPerson(String firstName, String lastName, Person newPerson) {
-		Optional<Person> personOptional = personRepository.findByFirstNameAndLastName(firstName, lastName);
-		if (personOptional.isEmpty()) {
-			logger.error("This person doesn't exist");
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This person doesn't exist");
+	public Person putPerson(String firstName, String lastName, Person newPerson) throws IOException {
+		Person oldPerson = personCRUD.findByFirstNameAndLastName(firstName, lastName);
+		if (oldPerson == null) {
+			logger.error("This person doesn't exists: {}", newPerson);
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This person doesn't exists");
 		}
-
-		Person oldPerson = personOptional.get();
 
 		try {
 
@@ -72,9 +77,7 @@ public class PersonService {
 			oldPerson.setPhone(newPerson.getPhone());
 			oldPerson.setZip(newPerson.getZip());
 
-			personRepository.save(oldPerson);
-
-			return oldPerson;
+			return personCRUD.save(oldPerson);
 
 		} catch (Exception e) {
 			logger.error("Unable to update this person", e);
@@ -83,60 +86,59 @@ public class PersonService {
 	}
 
 	@Transactional
-	public String deletePerson(String firstName, String lastName) {
-		Optional<Person> personOptional = personRepository.findByFirstNameAndLastName(firstName, lastName);
-		if (personOptional.isEmpty()) {
+	public String deletePerson(String firstName, String lastName) throws IOException {
+		Person person = personCRUD.findByFirstNameAndLastName(firstName, lastName);
+		if (person == null) {
 			logger.error("This person doesn't exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This person doesn't exist");
 		}
 
-		Person person = personOptional.get();
-
 		try {
-			personRepository.delete(person);
+			personCRUD.delete(person);
+			logger.info("Person deleted: {}", person);
 			return "Person deleted";
 		} catch (Exception e) {
 			logger.error("Unable to delete this person", e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to delete this person", e);
-		} finally {
-			logger.info("Person deleted: {}", person);
 		}
 	}
 
 	@Transactional(readOnly = true)
-	public List<Map<String, Object>> getChildsByAddress(String address) {
+	public ListChildDTO getChildsByAddress(String address) {
 		try {
-			List<Person> persons = personRepository.findByAddress(address);
+			List<Person> persons = personCRUD.findByAddress(address);
 
-			List<Map<String, Object>> result = new ArrayList<>();
+			ListChildDTO result = new ListChildDTO();
+			result.setChildren(new ArrayList<>());
 
 			for (Person person : persons) {
-				String birthDate = person.getMedicalRecord().getBirthdate();
+				String birthDate = medicalRecordCRUD
+						.findByFirstNameAndLastName(person.getFirstName(), person.getLastName()).getBirthdate();
 				int age = medicalRecordService.calculateAge(birthDate);
 
 				if (age <= 18) {
-					Map<String, Object> childMap = new HashMap<>();
-					childMap.put("firstName", person.getFirstName());
-					childMap.put("lastName", person.getLastName());
-					childMap.put("age", age);
-
-					List<Map<String, Object>> otherMembers = new ArrayList<>();
+					ListChildDTO.ChildDTO childDTO = result.new ChildDTO();
+					childDTO.setFirstName(person.getFirstName());
+					childDTO.setLastName(person.getLastName());
+					childDTO.setAge(age);
+					childDTO.setOtherMembers(new ArrayList<>());
 
 					for (Person otherPerson : persons) {
 						if (!otherPerson.equals(person)) {
-							Map<String, Object> otherPersonMap = new HashMap<>();
-							otherPersonMap.put("firstName", otherPerson.getFirstName());
-							otherPersonMap.put("lastName", otherPerson.getLastName());
-							otherPersonMap.put("age",
-									medicalRecordService.calculateAge(otherPerson.getMedicalRecord().getBirthdate()));
-							otherMembers.add(otherPersonMap);
+							ListChildDTO.OtherPersonDTO otherPersonDTO = result.new OtherPersonDTO();
+							otherPersonDTO.setFirstName(otherPerson.getFirstName());
+							otherPersonDTO.setLastName(otherPerson.getLastName());
+							otherPersonDTO.setAge(medicalRecordService.calculateAge(medicalRecordCRUD
+									.findByFirstNameAndLastName(otherPerson.getFirstName(), otherPerson.getLastName())
+									.getBirthdate()));
+							childDTO.getOtherMembers().add(otherPersonDTO);
 						}
 					}
 
-					childMap.put("otherMembers", otherMembers);
-					result.add(childMap);
+					result.getChildren().add(childDTO);
 				}
 			}
+
 			return result;
 		} catch (Exception e) {
 			logger.error("Unable to get persons by address", e);
@@ -145,44 +147,47 @@ public class PersonService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<Map<String, Object>> getPersonsAndFirestationByAddress(String address) {
-		List<Person> residents = personRepository.findByAddress(address);
+	public ResidentsAndFirestationDTO getResidentsAndFirestationByAddress(String address) throws IOException {
+		List<Person> residents = personCRUD.findByAddress(address);
 
 		if (residents.isEmpty()) {
 			logger.error("No residents found for this address");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No residents found for this address");
 		}
 
-		Optional<Firestation> firestation = firestationRepository.findByAddress(address);
-		if (firestation.isEmpty()) {
+		Firestation firestation = firestationCRUD.findByAddress(address);
+		if (firestation == null) {
 			logger.error("No firestation found for this address");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No firestation found for this address");
 		}
+
 		try {
 
-			int firestationNumber = firestation.get().getStation();
-
-			List<Map<String, Object>> result = new ArrayList<>();
+			ResidentsAndFirestationDTO result = new ResidentsAndFirestationDTO();
+			result.setResidents(new ArrayList<>());
 
 			for (Person resident : residents) {
-				Map<String, Object> residentMap = new HashMap<>();
-				residentMap.put("firstName", resident.getFirstName());
-				residentMap.put("lastName", resident.getLastName());
-				residentMap.put("phone", resident.getPhone());
+				ResidentsAndFirestationDTO.ResidentDTO residentDTO = new ResidentsAndFirestationDTO.ResidentDTO();
+				residentDTO.setFirstName(resident.getFirstName());
+				residentDTO.setLastName(resident.getLastName());
+				residentDTO.setPhone(resident.getPhone());
 
-				MedicalRecord medicalRecord = resident.getMedicalRecord();
+				MedicalRecord medicalRecord = medicalRecordCRUD.findByFirstNameAndLastName(resident.getFirstName(),
+						resident.getLastName());
 				if (medicalRecord != null) {
-					residentMap.put("age", medicalRecordService.calculateAge(medicalRecord.getBirthdate()));
-					residentMap.put("medications", medicalRecord.getMedications());
-					residentMap.put("allergies", medicalRecord.getAllergies());
+					residentDTO.setAge(medicalRecordService.calculateAge(medicalRecord.getBirthdate()));
+					residentDTO.setMedications(medicalRecord.getMedications());
+					residentDTO.setAllergies(medicalRecord.getAllergies());
 				}
 
-				result.add(residentMap);
+				result.getResidents().add(residentDTO);
 			}
 
-			Map<String, Object> firestationInfo = new HashMap<>();
-			firestationInfo.put("firestationNumber", firestationNumber);
-			result.add(firestationInfo);
+			int firestationNumber = firestation.getStation();
+
+			ResidentsAndFirestationDTO.FirestationInfoDTO firestationInfo = new ResidentsAndFirestationDTO.FirestationInfoDTO();
+			firestationInfo.setFirestationNumber(firestationNumber);
+			result.setFirestationInfo(firestationInfo);
 
 			return result;
 		} catch (Exception e) {
@@ -193,34 +198,30 @@ public class PersonService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<Map<String, Object>> getPersonInfoByFirstNameAndLastName(String firstName, String lastName) {
-		Optional<Person> matchingPersons = personRepository.findByFirstNameAndLastName(firstName, lastName);
-
-		if (matchingPersons.isEmpty()) {
-			logger.error("No person found with the given name: {} {}", firstName, lastName);
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No person found with the given name");
+	public PersonInfoDTO getPersonInfoByFirstNameAndLastName(String firstName, String lastName) throws IOException {
+		Person person = personCRUD.findByFirstNameAndLastName(firstName, lastName);
+		if (person == null) {
+			logger.error("This person doesn't exist");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This person doesn't exist");
 		}
+
 		try {
+			PersonInfoDTO personInfoDTO = new PersonInfoDTO();
+			personInfoDTO.setFirstName(person.getFirstName());
+			personInfoDTO.setLastName(person.getLastName());
+			personInfoDTO.setAddress(person.getAddress());
+			personInfoDTO.setEmail(person.getEmail());
+			personInfoDTO.setAge(medicalRecordService.calculateAge(medicalRecordCRUD
+					.findByFirstNameAndLastName(person.getFirstName(), person.getLastName()).getBirthdate()));
 
-			Person person = matchingPersons.get();
-			List<Map<String, Object>> result = new ArrayList<>();
-
-			Map<String, Object> personMap = new HashMap<>();
-			personMap.put("firstName", person.getFirstName());
-			personMap.put("lastName", person.getLastName());
-			personMap.put("address", person.getAddress());
-			personMap.put("email", person.getEmail());
-			personMap.put("age", medicalRecordService.calculateAge(person.getMedicalRecord().getBirthdate()));
-
-			MedicalRecord medicalRecord = person.getMedicalRecord();
-			if (medicalRecord != null) {
-				personMap.put("medications", medicalRecord.getMedications());
-				personMap.put("allergies", medicalRecord.getAllergies());
+			MedicalRecord medicalRecordOfPerson = medicalRecordCRUD.findByFirstNameAndLastName(person.getFirstName(),
+					person.getLastName());
+			if (medicalRecordOfPerson != null) {
+				personInfoDTO.setMedications(medicalRecordOfPerson.getMedications());
+				personInfoDTO.setAllergies(medicalRecordOfPerson.getAllergies());
 			}
 
-			result.add(personMap);
-
-			return result;
+			return personInfoDTO;
 		} catch (Exception e) {
 			logger.error("Unable to get person info", e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to get person info", e);
@@ -228,19 +229,22 @@ public class PersonService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<String> getCommunityEmails(String city) {
-		List<Person> residents = personRepository.findByCity(city);
+	public CommunityEmailsDTO getCommunityEmails(String city) throws IOException {
+		List<Person> residents = personCRUD.findByCity(city);
 
 		if (residents.isEmpty()) {
 			logger.error("No residents found for the city: {}", city);
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No residents found for the city");
 		}
 		try {
-
-			return residents.stream().map(Person::getEmail).collect(Collectors.toList());
+			List<String> emails = residents.stream().map(Person::getEmail).collect(Collectors.toList());
+			CommunityEmailsDTO communityEmailsDTO = new CommunityEmailsDTO();
+			communityEmailsDTO.setEmails(emails);
+			return communityEmailsDTO;
 		} catch (Exception e) {
 			logger.error("Unable to get community emails", e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to get community emails", e);
 		}
 	}
+
 }

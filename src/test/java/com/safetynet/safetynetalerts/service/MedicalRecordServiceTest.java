@@ -5,16 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.Arrays;
-import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,10 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.safetynet.safetynetalerts.CRUD.MedicalRecordCRUD;
+import com.safetynet.safetynetalerts.CRUD.PersonCRUD;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
 import com.safetynet.safetynetalerts.model.Person;
-import com.safetynet.safetynetalerts.repository.MedicalRecordRepository;
-import com.safetynet.safetynetalerts.repository.PersonRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class MedicalRecordServiceTest {
@@ -35,216 +33,163 @@ public class MedicalRecordServiceTest {
 	private MedicalRecordService medicalRecordService;
 
 	@Mock
-	private static MedicalRecordRepository medicalRecordRepository;
+	private static MedicalRecordCRUD medicalRecordCRUD;
 
 	@Mock
-	private static PersonRepository personRepository;
-
-	private static Person TEST_PERSON;
-	private static MedicalRecord TEST_MEDICAL_RECORD;
-
-	@BeforeEach
-	public void setUpPerTest() {
-		TEST_PERSON = new Person();
-		TEST_PERSON.setFirstName("John");
-		TEST_PERSON.setLastName("Boyd");
-		TEST_PERSON.setAddress("1509 Culver St");
-		TEST_PERSON.setCity("Culver");
-		TEST_PERSON.setZip("97451");
-		TEST_PERSON.setPhone("841-874-6512");
-		TEST_PERSON.setEmail("jaboyd@email.com");
-
-		TEST_MEDICAL_RECORD = new MedicalRecord();
-		TEST_MEDICAL_RECORD.setBirthdate("03/06/1984");
-		TEST_MEDICAL_RECORD.setAllergies(Arrays.asList("nillacilan"));
-		TEST_MEDICAL_RECORD.setMedications(Arrays.asList("aznol:350mg", "hydrapermazol:100mg"));
-	}
+	private static PersonCRUD personCRUD;
 
 	@Test
-	public void testPostMedicalRecord() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
-		when(medicalRecordRepository.findByPerson(eq(TEST_PERSON))).thenReturn(Optional.empty());
-		when(medicalRecordRepository.save(any(MedicalRecord.class))).thenReturn(TEST_MEDICAL_RECORD);
+	public void testPostMedicalRecord() throws IOException {
+		Person person = new Person();
+		person.setFirstName("John");
+		person.setLastName("Boyd");
 
-		MedicalRecord result = medicalRecordService.postMedicalRecord("John", "Boyd", TEST_MEDICAL_RECORD);
+		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName("John");
+		medicalRecord.setLastName("Boyd");
+		medicalRecord.setBirthdate("03/06/1984");
+		medicalRecord.setAllergies(Arrays.asList("nillacilan"));
+		medicalRecord.setMedications(Arrays.asList("aznol:350mg", "hydrapermazol:100mg"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(medicalRecordRepository, times(1)).findByPerson(TEST_PERSON);
-		verify(medicalRecordRepository, times(1)).save(TEST_MEDICAL_RECORD);
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(person);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(null);
+		when(medicalRecordCRUD.save(medicalRecord)).thenReturn(medicalRecord);
+
+		MedicalRecord result = medicalRecordService.postMedicalRecord(medicalRecord);
+
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, times(1)).save(medicalRecord);
 
 		assertNotNull(result);
 
+		assertEquals("John", result.getFirstName());
+		assertEquals("Boyd", result.getLastName());
 		assertEquals("03/06/1984", result.getBirthdate());
 		assertEquals("nillacilan", result.getAllergies().get(0));
 		assertEquals("aznol:350mg", result.getMedications().get(0));
 		assertEquals("hydrapermazol:100mg", result.getMedications().get(1));
-		assertEquals(TEST_PERSON, result.getPerson());
 	}
 
 	@Test
-	public void testPostMedicalRecordPersonNotFound() {
-		String firstName = "John";
-		String lastName = "Doe";
+	public void testPostMedicalRecordPersonNotFound() throws IOException {
 		MedicalRecord medicalRecord = new MedicalRecord();
-		medicalRecord.setBirthdate("2000-01-01");
-		medicalRecord.setAllergies(Arrays.asList("allergy1"));
-		medicalRecord.setMedications(Arrays.asList("medication1"));
+		medicalRecord.setFirstName("John");
+		medicalRecord.setLastName("Boyd");
+		medicalRecord.setBirthdate("03/06/1984");
 
-		when(personRepository.findByFirstNameAndLastName(eq(firstName), eq(lastName))).thenReturn(Optional.empty());
-
-		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> medicalRecordService.postMedicalRecord(firstName, lastName, TEST_MEDICAL_RECORD));
-
-		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-		assertTrue(exception.getReason().contains("This Person doesn't exists"));
-
-		verify(personRepository, times(1)).findByFirstNameAndLastName(firstName, lastName);
-		verify(medicalRecordRepository, never()).findByPerson(any());
-		verify(medicalRecordRepository, never()).save(any());
-	}
-
-	@Test
-	public void testPostMedicalRecordConflict() {
-		String firstName = "John";
-		String lastName = "Boyd";
-
-		TEST_MEDICAL_RECORD.setPerson(TEST_PERSON);
-
-		when(personRepository.findByFirstNameAndLastName(eq(firstName), eq(lastName)))
-				.thenReturn(Optional.of(TEST_PERSON));
-		when(medicalRecordRepository.findByPerson(any())).thenReturn(Optional.of(TEST_MEDICAL_RECORD));
+		when(personCRUD.findByFirstNameAndLastName(medicalRecord.getFirstName(), medicalRecord.getLastName()))
+				.thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> medicalRecordService.postMedicalRecord(firstName, lastName, TEST_MEDICAL_RECORD));
-
-		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-		assertTrue(exception.getReason().contains("This Medical record already exists"));
-
-		verify(personRepository, times(1)).findByFirstNameAndLastName(eq(firstName), eq(lastName));
-		verify(medicalRecordRepository, times(1)).findByPerson(any());
-		verify(medicalRecordRepository, never()).save(any());
-	}
-
-	@Test
-	public void testPutMedicalRecord() {
-		TEST_MEDICAL_RECORD.setPerson(TEST_PERSON);
-
-		MedicalRecord newMedicalRecord = new MedicalRecord();
-		newMedicalRecord.setBirthdate("12/02/2003");
-		newMedicalRecord.setAllergies(Arrays.asList("peanut"));
-		newMedicalRecord.setMedications(Arrays.asList("tradoxidine:400mg"));
-
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
-		when(medicalRecordRepository.findByPerson(eq(TEST_PERSON))).thenReturn(Optional.of(TEST_MEDICAL_RECORD));
-		when(medicalRecordRepository.save(any(MedicalRecord.class))).thenReturn(TEST_MEDICAL_RECORD);
-
-		MedicalRecord result = medicalRecordService.putMedicalRecord("John", "Boyd", newMedicalRecord);
-
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(medicalRecordRepository, times(1)).findByPerson(TEST_PERSON);
-		verify(medicalRecordRepository, times(1)).save(TEST_MEDICAL_RECORD);
-
-		assertNotNull(result);
-		assertEquals("12/02/2003", result.getBirthdate());
-		assertEquals("peanut", result.getAllergies().get(0));
-		assertEquals("tradoxidine:400mg", result.getMedications().get(0));
-		assertEquals(TEST_PERSON, result.getPerson());
-	}
-
-	@Test
-	public void testPutMedicalRecordPersonNotFound() {
-		String firstName = "John";
-		String lastName = "Doe";
-		MedicalRecord medicalRecord = new MedicalRecord();
-		medicalRecord.setBirthdate("2000-01-01");
-		medicalRecord.setAllergies(Arrays.asList("allergy1"));
-		medicalRecord.setMedications(Arrays.asList("medication1"));
-
-		when(personRepository.findByFirstNameAndLastName(eq(firstName), eq(lastName))).thenReturn(Optional.empty());
-
-		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> medicalRecordService.putMedicalRecord(firstName, lastName, TEST_MEDICAL_RECORD));
+				() -> medicalRecordService.postMedicalRecord(medicalRecord));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This person doesn't exist"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(firstName, lastName);
-		verify(medicalRecordRepository, never()).findByPerson(any());
-		verify(medicalRecordRepository, never()).save(any());
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, never()).findByFirstNameAndLastName(any(), any());
+		verify(medicalRecordCRUD, never()).save(any());
 	}
 
 	@Test
-	public void testPutMedicalRecordMedicalRecordNotFound() {
-		String firstName = "John";
-		String lastName = "Boyd";
-		MedicalRecord medicalRecord = new MedicalRecord();
-		medicalRecord.setBirthdate("2000-01-01");
-		medicalRecord.setAllergies(Arrays.asList("allergy1"));
-		medicalRecord.setMedications(Arrays.asList("medication1"));
+	public void testPostMedicalRecordConflict() throws IOException {
+		Person person = new Person();
+		person.setFirstName("John");
+		person.setLastName("Boyd");
 
-		when(personRepository.findByFirstNameAndLastName(eq(firstName), eq(lastName)))
-				.thenReturn(Optional.of(TEST_PERSON));
-		when(medicalRecordRepository.findByPerson(any())).thenReturn(Optional.empty());
+		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName("John");
+		medicalRecord.setLastName("Boyd");
+
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(person);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(medicalRecord);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> medicalRecordService.putMedicalRecord(firstName, lastName, TEST_MEDICAL_RECORD));
+				() -> medicalRecordService.postMedicalRecord(medicalRecord));
+
+		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("This Medical record already exists"));
+
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName(any(), any());
+		verify(medicalRecordCRUD, never()).save(any());
+	}
+
+	@Test
+	public void testPutMedicalRecord() throws IOException {
+		MedicalRecord oldMedicalRecord = new MedicalRecord();
+		oldMedicalRecord.setFirstName("John");
+		oldMedicalRecord.setLastName("Boyd");
+		oldMedicalRecord.setBirthdate("03/06/1984");
+
+		MedicalRecord newMedicalRecord = new MedicalRecord();
+		newMedicalRecord.setFirstName("John");
+		newMedicalRecord.setLastName("Boyd");
+		newMedicalRecord.setBirthdate("12/02/2003");
+
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(oldMedicalRecord);
+		when(medicalRecordCRUD.save(oldMedicalRecord)).thenReturn(oldMedicalRecord);
+
+		MedicalRecord result = medicalRecordService.putMedicalRecord("John", "Boyd", newMedicalRecord);
+
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, times(1)).save(oldMedicalRecord);
+
+		assertNotNull(result);
+		assertEquals("12/02/2003", result.getBirthdate());
+	}
+
+	@Test
+	public void testPutMedicalRecordMedicalRecordNotFound() throws IOException {
+		MedicalRecord newMedicalRecord = new MedicalRecord();
+		newMedicalRecord.setFirstName("John");
+		newMedicalRecord.setLastName("Boyd");
+		newMedicalRecord.setBirthdate("12/02/2003");
+
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(null);
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> medicalRecordService.putMedicalRecord("John", "Boyd", newMedicalRecord));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This medical record doesn't exist"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(firstName, lastName);
-		verify(medicalRecordRepository, times(1)).findByPerson(TEST_PERSON);
-		verify(medicalRecordRepository, never()).save(any());
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, never()).save(any());
 	}
 
 	@Test
-	public void testDeleteMedicalRecord() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
-		when(medicalRecordRepository.findByPerson(eq(TEST_PERSON))).thenReturn(Optional.of(TEST_MEDICAL_RECORD));
+	public void testDeleteMedicalRecord() throws IOException {
+		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName("John");
+		medicalRecord.setLastName("Boyd");
+		medicalRecord.setBirthdate("12/02/2003");
+
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(medicalRecord);
 
 		String result = medicalRecordService.deleteMedicalRecord("John", "Boyd");
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(medicalRecordRepository, times(1)).findByPerson(TEST_PERSON);
-		verify(medicalRecordRepository, times(1)).delete(TEST_MEDICAL_RECORD);
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, times(1)).delete(medicalRecord);
 
 		assertNotNull(result);
 		assertEquals("Medical record deleted", result);
 	}
-	
+
 	@Test
-	public void testDeleteMedicalRecordPersonNotFound() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
+	public void testDeleteMedicalRecordMedicalRecordNotFound() throws IOException {
+
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 				() -> medicalRecordService.deleteMedicalRecord("John", "Boyd"));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-		assertTrue(exception.getReason().contains("This person doesn't exist"));
-
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(medicalRecordRepository, never()).findByPerson(any());
-		verify(medicalRecordRepository, never()).delete(any());
-	}
-	
-	@Test
-	public void testDeleteMedicalRecordMedicalRecordNotFound() {
-		String firstName = "John";
-		String lastName = "Boyd";
-
-		when(personRepository.findByFirstNameAndLastName(eq(firstName), eq(lastName)))
-				.thenReturn(Optional.of(TEST_PERSON));
-		when(medicalRecordRepository.findByPerson(eq(TEST_PERSON))).thenReturn(Optional.empty());
-
-		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> medicalRecordService.deleteMedicalRecord(firstName, lastName));
-
-		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This medical record doesn't exist"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(firstName, lastName);
-		verify(medicalRecordRepository, times(1)).findByPerson(TEST_PERSON);
-		verify(medicalRecordRepository, never()).delete(any());
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordCRUD, never()).delete(any());
 	}
 
 	@Test

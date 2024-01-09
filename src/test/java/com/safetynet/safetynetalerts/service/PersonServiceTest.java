@@ -5,19 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,91 +23,114 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.safetynet.safetynetalerts.CRUD.FirestationCRUD;
+import com.safetynet.safetynetalerts.CRUD.MedicalRecordCRUD;
+import com.safetynet.safetynetalerts.CRUD.PersonCRUD;
+import com.safetynet.safetynetalerts.DTO.CommunityEmailsDTO;
+import com.safetynet.safetynetalerts.DTO.ListChildDTO;
+import com.safetynet.safetynetalerts.DTO.PersonInfoDTO;
+import com.safetynet.safetynetalerts.DTO.ResidentsAndFirestationDTO;
 import com.safetynet.safetynetalerts.model.Firestation;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
 import com.safetynet.safetynetalerts.model.Person;
-import com.safetynet.safetynetalerts.repository.FirestationRepository;
-import com.safetynet.safetynetalerts.repository.PersonRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class PersonServiceTest {
 
 	@Mock
-	private static PersonRepository personRepository;
+	private static PersonCRUD personCRUD;
+
+	@Mock
+	private static MedicalRecordCRUD medicalRecordCRUD;
 
 	@Mock
 	private static MedicalRecordService medicalRecordService;
 
 	@Mock
-	private static FirestationRepository firestationRepository;
+	private static FirestationCRUD firestationCRUD;
 
 	@InjectMocks
 	private PersonService personService;
 
-	private static Person TEST_PERSON;
-
-	@BeforeEach
-	public void setUpPerTest() {
-		TEST_PERSON = new Person();
-		TEST_PERSON.setFirstName("John");
-		TEST_PERSON.setLastName("Boyd");
-		TEST_PERSON.setAddress("1509 Culver St");
-		TEST_PERSON.setCity("Culver");
-		TEST_PERSON.setZip("97451");
-		TEST_PERSON.setPhone("841-874-6512");
-		TEST_PERSON.setEmail("jaboyd@email.com");
-	}
-
 	@Test
-	public void testPostPerson() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
-		when(personRepository.save(any(Person.class))).thenReturn(TEST_PERSON);
+	public void testPostPerson() throws IOException {
+		Person person = new Person();
+		person.setFirstName("John");
+		person.setLastName("Boyd");
+		person.setAddress("1509 Culver St");
+		person.setCity("Culver");
+		person.setZip("97451");
+		person.setPhone("841-874-6512");
+		person.setEmail("test@test.com");
 
-		Person result = personService.postPerson(TEST_PERSON);
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(null);
+		when(personCRUD.save(person)).thenReturn(person);
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(personRepository, times(1)).save(TEST_PERSON);
+		Person result = personService.postPerson(person);
+
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(personCRUD, times(1)).save(person);
 
 		assertNotNull(result);
 		assertEquals("1509 Culver St", result.getAddress());
 		assertEquals("John", result.getFirstName());
 		assertEquals("Boyd", result.getLastName());
 		assertEquals("Culver", result.getCity());
-		assertEquals("jaboyd@email.com", result.getEmail());
+		assertEquals("test@test.com", result.getEmail());
 		assertEquals("841-874-6512", result.getPhone());
 		assertEquals("97451", result.getZip());
 	}
 
 	@Test
-	public void testPostPersonConflict() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
+	public void testPostPersonConflict() throws IOException {
+		Person person = new Person();
+		person.setFirstName("John");
+		person.setLastName("Boyd");
+		person.setAddress("1509 Culver St");
+		person.setCity("Culver");
+		person.setZip("97451");
+		person.setPhone("841-874-6512");
+		person.setEmail("test@test.com");
+
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(person);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> personService.postPerson(TEST_PERSON));
+				() -> personService.postPerson(person));
 
 		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This person already exists"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(eq("John"), eq("Boyd"));
-		verify(personRepository, never()).save(any());
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(personCRUD, never()).save(any());
 	}
 
 	@Test
-	public void testPutPerson() {
+	public void testPutPerson() throws IOException {
+		Person oldPerson = new Person();
+		oldPerson.setFirstName("John");
+		oldPerson.setLastName("Boyd");
+		oldPerson.setAddress("1509 Culver St");
+		oldPerson.setPhone("841-874-6512");
+		oldPerson.setCity("Culver");
+		oldPerson.setZip("97451");
+		oldPerson.setEmail("test@test.com");
+
 		Person newPerson = new Person();
+		newPerson.setFirstName("John");
+		newPerson.setLastName("Boyd");
 		newPerson.setAddress("3457 Main St");
 		newPerson.setCity("Springfield");
 		newPerson.setEmail("new.email@example.com");
 		newPerson.setPhone("123-456-7890");
 		newPerson.setZip("12345");
 
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
-		when(personRepository.save(any(Person.class))).thenReturn(TEST_PERSON);
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(oldPerson);
+		when(personCRUD.save(oldPerson)).thenReturn(oldPerson);
 
 		Person result = personService.putPerson("John", "Boyd", newPerson);
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(personRepository, times(1)).save(TEST_PERSON);
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(personCRUD, times(1)).save(oldPerson);
 
 		assertNotNull(result);
 		assertEquals("3457 Main St", result.getAddress());
@@ -121,35 +141,53 @@ public class PersonServiceTest {
 	}
 
 	@Test
-	public void testPutPersonNotFound() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
+	public void testPutPersonNotFound() throws IOException {
+		Person newPerson = new Person();
+		newPerson.setFirstName("John");
+		newPerson.setLastName("Boyd");
+		newPerson.setAddress("3457 Main St");
+		newPerson.setCity("Springfield");
+		newPerson.setEmail("new.email@example.com");
+		newPerson.setPhone("123-456-7890");
+		newPerson.setZip("12345");
+
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> personService.putPerson("John", "Boyd", TEST_PERSON));
+				() -> personService.putPerson("John", "Boyd", newPerson));
 
-		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This person doesn't exist"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(eq("John"), eq("Boyd"));
-		verify(personRepository, never()).save(any());
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(personCRUD, never()).save(any());
 	}
 
 	@Test
-	public void testDeletePerson() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.of(TEST_PERSON));
+	public void testDeletePerson() throws IOException {
+		Person newPerson = new Person();
+		newPerson.setFirstName("John");
+		newPerson.setLastName("Boyd");
+		newPerson.setAddress("3457 Main St");
+		newPerson.setCity("Springfield");
+		newPerson.setEmail("new.email@example.com");
+		newPerson.setPhone("123-456-7890");
+		newPerson.setZip("12345");
+
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(newPerson);
 
 		String result = personService.deletePerson("John", "Boyd");
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName("John", "Boyd");
-		verify(personRepository, times(1)).delete(TEST_PERSON);
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(personCRUD, times(1)).delete(newPerson);
 
 		assertNotNull(result);
 		assertEquals("Person deleted", result);
 	}
 
 	@Test
-	public void testDeletePersonNotFound() {
-		when(personRepository.findByFirstNameAndLastName(eq("John"), eq("Boyd"))).thenReturn(Optional.empty());
+	public void testDeletePersonNotFound() throws IOException {
+		when(personCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 				() -> personService.deletePerson("John", "Boyd"));
@@ -157,54 +195,73 @@ public class PersonServiceTest {
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This person doesn't exist"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(eq("John"), eq("Boyd"));
-		verify(personRepository, never()).delete(any());
+		verify(personCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(personCRUD, never()).delete(any());
 	}
 
 	@Test
-	public void testGetChildsByAddress() {
+	public void testGetChildsByAddress() throws IOException {
 		Person child = new Person();
 		child.setFirstName("John");
-		child.setLastName("Doe");
+		child.setLastName("Boyd");
 		child.setAddress("1509 Culver St");
 		child.setCity("Culver");
 		child.setZip("97451");
 		child.setPhone("111-222-3333");
 		child.setEmail("test@test.com");
 
+		Person parent = new Person();
+		parent.setFirstName("Marc");
+		parent.setLastName("Boyd");
+		parent.setAddress("1509 Culver St");
+		parent.setCity("Culver");
+		parent.setZip("97451");
+		parent.setPhone("111-222-3333");
+		parent.setEmail("test@test.com");
+
+		MedicalRecord parentMedicalRecord = new MedicalRecord();
+		parentMedicalRecord.setFirstName("Marc");
+		parentMedicalRecord.setLastName("Boyd");
+		parentMedicalRecord.setBirthdate("01/15/1980");
+
 		MedicalRecord childMedicalRecord = new MedicalRecord();
+		childMedicalRecord.setFirstName("John");
+		childMedicalRecord.setLastName("Boyd");
 		childMedicalRecord.setBirthdate("01/15/2010");
-		child.setMedicalRecord(childMedicalRecord);
 
-		MedicalRecord adultMedicalRecord = new MedicalRecord();
-		adultMedicalRecord.setBirthdate("01/15/1980");
-		TEST_PERSON.setMedicalRecord(adultMedicalRecord);
+		List<Person> residents = new ArrayList<>();
+		residents.add(child);
+		residents.add(parent);
 
-		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList(child, TEST_PERSON));
-		when(medicalRecordService.calculateAge(anyString())).thenReturn(13).thenReturn(43);
+		when(personCRUD.findByAddress("1509 Culver St")).thenReturn(residents);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(childMedicalRecord);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("Marc", "Boyd")).thenReturn(parentMedicalRecord);
+		when(medicalRecordService.calculateAge("01/15/2010")).thenReturn(13);
+		when(medicalRecordService.calculateAge("01/15/1980")).thenReturn(42);
 
-		List<Map<String, Object>> result = personService.getChildsByAddress("1509 Culver St");
+		ListChildDTO result = personService.getChildsByAddress("1509 Culver St");
 
-		verify(personRepository, times(1)).findByAddress(any());
-		verify(medicalRecordService, times(3)).calculateAge(any());
+		verify(personCRUD, times(1)).findByAddress("1509 Culver St");
+		verify(medicalRecordService, times(1)).calculateAge("01/15/2010");
 
 		assertNotNull(result);
+		assertEquals(1, result.getChildren().size());
 
-		Map<String, Object> childMap = result.get(0);
-		assertEquals("John", childMap.get("firstName"));
-		assertEquals("Doe", childMap.get("lastName"));
-		assertEquals(13, childMap.get("age"));
+		ListChildDTO.ChildDTO childDTO = result.getChildren().get(0);
+		assertEquals("John", childDTO.getFirstName());
+		assertEquals("Boyd", childDTO.getLastName());
+		assertEquals(13, childDTO.getAge());
 
-		@SuppressWarnings("unchecked")
-		List<Map<String, Object>> otherMembers = (List<Map<String, Object>>) childMap.get("otherMembers");
-		assertNotNull(otherMembers);
-		assertEquals("John", otherMembers.get(0).get("firstName"));
-		assertEquals("Boyd", otherMembers.get(0).get("lastName"));
-		assertEquals(43, otherMembers.get(0).get("age"));
+		assertNotNull(childDTO.getOtherMembers());
+		assertEquals(1, childDTO.getOtherMembers().size());
+		ListChildDTO.OtherPersonDTO otherPersonDTO = childDTO.getOtherMembers().get(0);
+		assertEquals("Marc", otherPersonDTO.getFirstName());
+		assertEquals("Boyd", otherPersonDTO.getLastName());
+		assertEquals(42, otherPersonDTO.getAge());
 	}
 
 	@Test
-	public void testGetPersonsAndFirestationByAddress() {
+	public void testGetPersonsAndFirestationByAddress() throws IOException {
 		Person person = new Person();
 		person.setFirstName("John");
 		person.setLastName("Doe");
@@ -212,83 +269,92 @@ public class PersonServiceTest {
 		person.setAddress("123 Main St");
 
 		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName("John");
+		medicalRecord.setLastName("Doe");
 		medicalRecord.setBirthdate("01/15/1980");
 		medicalRecord.setMedications(Arrays.asList("Med1", "Med2"));
 		medicalRecord.setAllergies(Arrays.asList("Allergy1", "Allergy2"));
-		person.setMedicalRecord(medicalRecord);
 
-		List<Person> persons = Arrays.asList(person);
+		List<Person> persons = new ArrayList<>();
+		persons.add(person);
 
 		Firestation firestation = new Firestation();
 		firestation.setStation(1);
 		firestation.setAddress("123 Main St");
 
-		when(personRepository.findByAddress(any())).thenReturn(persons);
-		when(firestationRepository.findByAddress(any())).thenReturn(Optional.of(firestation));
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(persons);
+		when(firestationCRUD.findByAddress("123 Main St")).thenReturn(firestation);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Doe")).thenReturn(medicalRecord);
 		when(medicalRecordService.calculateAge("01/15/1980")).thenReturn(42);
 
-		List<Map<String, Object>> result = personService.getPersonsAndFirestationByAddress("123 Main St");
+		ResidentsAndFirestationDTO result = personService.getResidentsAndFirestationByAddress("123 Main St");
 
-		verify(personRepository, times(1)).findByAddress("123 Main St");
-		verify(firestationRepository, times(1)).findByAddress("123 Main St");
+		verify(personCRUD, times(1)).findByAddress("123 Main St");
+		verify(firestationCRUD, times(1)).findByAddress("123 Main St");
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Doe");
 		verify(medicalRecordService, times(1)).calculateAge("01/15/1980");
 
 		assertNotNull(result);
-		assertEquals(2, result.size());
 
-		Map<String, Object> residentMap = result.get(0);
-		assertEquals("John", residentMap.get("firstName"));
-		assertEquals("Doe", residentMap.get("lastName"));
-		assertEquals("111-222-3333", residentMap.get("phone"));
-		assertEquals(42, residentMap.get("age"));
+		List<ResidentsAndFirestationDTO.ResidentDTO> residents = result.getResidents();
+		assertEquals(1, residents.size());
 
-		@SuppressWarnings("unchecked")
-		List<String> medications = (List<String>) residentMap.get("medications");
-		@SuppressWarnings("unchecked")
-		List<String> allergies = (List<String>) residentMap.get("allergies");
+		ResidentsAndFirestationDTO.ResidentDTO residentDTO = residents.get(0);
+		assertEquals("John", residentDTO.getFirstName());
+		assertEquals("Doe", residentDTO.getLastName());
+		assertEquals("111-222-3333", residentDTO.getPhone());
+		assertEquals(42, residentDTO.getAge());
+		assertEquals(Arrays.asList("Med1", "Med2"), residentDTO.getMedications());
+		assertEquals(Arrays.asList("Allergy1", "Allergy2"), residentDTO.getAllergies());
 
-		assertNotNull(medications);
-		assertNotNull(allergies);
-		assertEquals(2, medications.size());
-		assertEquals(2, allergies.size());
-
-		Map<String, Object> firestationInfo = result.get(1);
-		assertEquals(1, firestationInfo.get("firestationNumber"));
+		ResidentsAndFirestationDTO.FirestationInfoDTO firestationInfoDTO = result.getFirestationInfo();
+		assertNotNull(firestationInfoDTO);
+		assertEquals(1, firestationInfoDTO.getFirestationNumber());
 	}
 
 	@Test
-	public void testGetPersonsAndFirestationByAddressNoPerson() {
-		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList());
+	public void testGetPersonsAndFirestationByAddressNoPerson() throws IOException {
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(Arrays.asList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> personService.getPersonsAndFirestationByAddress("123 Main St"));
+				() -> personService.getResidentsAndFirestationByAddress("123 Main St"));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("No residents found for this address"));
 
-		verify(personRepository, times(1)).findByAddress("123 Main St");
-		verify(firestationRepository, never()).findByAddress(any());
+		verify(personCRUD, times(1)).findByAddress("123 Main St");
+		verify(firestationCRUD, never()).findByAddress(any());
+		verify(medicalRecordCRUD, never()).findByFirstNameAndLastName("John", "Doe");
 		verify(medicalRecordService, never()).calculateAge(any());
 	}
 
 	@Test
-	public void testGetPersonsAndFirestationByAddressNoFirestation() {
-		when(personRepository.findByAddress(any())).thenReturn(Arrays.asList(TEST_PERSON));
-		when(firestationRepository.findByAddress(any())).thenReturn(Optional.empty());
+	public void testGetPersonsAndFirestationByAddressNoFirestation() throws IOException {
+		Person person = new Person();
+		person.setFirstName("John");
+		person.setLastName("Doe");
+		person.setPhone("111-222-3333");
+		person.setAddress("123 Main St");
+
+		List<Person> persons = new ArrayList<>();
+		persons.add(person);
+
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(persons);
+		when(firestationCRUD.findByAddress("123 Main St")).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> personService.getPersonsAndFirestationByAddress("123 Main St"));
+				() -> personService.getResidentsAndFirestationByAddress("123 Main St"));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("No firestation found for this address"));
 
-		verify(personRepository, times(1)).findByAddress("123 Main St");
-		verify(firestationRepository, times(1)).findByAddress("123 Main St");
+		verify(personCRUD, times(1)).findByAddress("123 Main St");
+		verify(firestationCRUD, times(1)).findByAddress("123 Main St");
 		verify(medicalRecordService, never()).calculateAge(any());
 	}
 
 	@Test
-	public void testGetPersonInfoByFirstNameAndLastName() {
+	public void testGetPersonInfoByFirstNameAndLastName() throws IOException {
 		String firstName = "John";
 		String lastName = "Doe";
 
@@ -299,83 +365,90 @@ public class PersonServiceTest {
 		person.setEmail("john.doe@example.com");
 
 		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName(firstName);
+		medicalRecord.setLastName(lastName);
 		medicalRecord.setBirthdate("01/15/1980");
 		medicalRecord.setMedications(Arrays.asList("Med1", "Med2"));
 		medicalRecord.setAllergies(Arrays.asList("Allergy1", "Allergy2"));
-		person.setMedicalRecord(medicalRecord);
 
-		when(personRepository.findByFirstNameAndLastName(firstName, lastName)).thenReturn(Optional.of(person));
+		when(personCRUD.findByFirstNameAndLastName(firstName, lastName)).thenReturn(person);
+		when(medicalRecordCRUD.findByFirstNameAndLastName(firstName, lastName)).thenReturn(medicalRecord);
 		when(medicalRecordService.calculateAge("01/15/1980")).thenReturn(42);
 
-		List<Map<String, Object>> result = personService.getPersonInfoByFirstNameAndLastName(firstName, lastName);
+		PersonInfoDTO result = personService.getPersonInfoByFirstNameAndLastName(firstName, lastName);
+
+		verify(personCRUD, times(1)).findByFirstNameAndLastName(firstName, lastName);
+		verify(medicalRecordCRUD, times(2)).findByFirstNameAndLastName(firstName, lastName);
+		verify(medicalRecordService, times(1)).calculateAge("01/15/1980");
 
 		assertNotNull(result);
-		assertEquals(1, result.size());
 
-		Map<String, Object> personMap = result.get(0);
-		assertEquals(firstName, personMap.get("firstName"));
-		assertEquals(lastName, personMap.get("lastName"));
-		assertEquals("123 Main St", personMap.get("address"));
-		assertEquals("john.doe@example.com", personMap.get("email"));
-		assertEquals(42, personMap.get("age"));
-
-		@SuppressWarnings("unchecked")
-		List<String> medications = (List<String>) personMap.get("medications");
-		@SuppressWarnings("unchecked")
-		List<String> allergies = (List<String>) personMap.get("allergies");
-
-		assertNotNull(medications);
-		assertNotNull(allergies);
-		assertEquals(2, medications.size());
-		assertEquals(2, allergies.size());
-		assertEquals("Med1", medications.get(0));
-		assertEquals("Allergy2", allergies.get(1));
+		assertEquals(firstName, result.getFirstName());
+		assertEquals(lastName, result.getLastName());
+		assertEquals("123 Main St", result.getAddress());
+		assertEquals("john.doe@example.com", result.getEmail());
+		assertEquals(42, result.getAge());
+		assertEquals(Arrays.asList("Med1", "Med2"), result.getMedications());
+		assertEquals(Arrays.asList("Allergy1", "Allergy2"), result.getAllergies());
 	}
 
 	@Test
-	public void testGetPersonInfoByFirstNameAndLastNameNotFound() {
+	public void testGetPersonInfoByFirstNameAndLastNameNotFound() throws IOException {
 		String firstName = "John";
 		String lastName = "Doe";
 
-		when(personRepository.findByFirstNameAndLastName(firstName, lastName)).thenReturn(Optional.empty());
+		when(personCRUD.findByFirstNameAndLastName(firstName, lastName)).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 				() -> personService.getPersonInfoByFirstNameAndLastName(firstName, lastName));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-		assertTrue(exception.getReason().contains("No person found with the given name"));
+		assertTrue(exception.getReason().contains("This person doesn't exist"));
 
-		verify(personRepository, times(1)).findByFirstNameAndLastName(firstName, lastName);
+		verify(personCRUD, times(1)).findByFirstNameAndLastName(firstName, lastName);
 		verify(medicalRecordService, never()).calculateAge(any());
+		verify(medicalRecordCRUD, never()).findByFirstNameAndLastName(firstName, lastName);
 	}
 
 	@Test
-	public void testGetCommunityEmails() {
+	public void testGetCommunityEmails() throws IOException {
 		String city = "Culver";
 
 		Person person1 = new Person();
-		person1.setEmail("john.doe@example.com");
+		person1.setFirstName("John");
+		person1.setLastName("Doe");
+		person1.setAddress("123 Main St");
+		person1.setCity(city);
+		person1.setEmail("test@test.com");
+		person1.setPhone("111-222-3333");
+		person1.setZip("12345");
 
 		Person person2 = new Person();
+		person2.setFirstName("Jane");
+		person2.setLastName("Smith");
+		person2.setAddress("456 Main St");
+		person2.setCity(city);
+		person2.setPhone("444-555-6666");
+		person2.setZip("54321");
 		person2.setEmail("jane.smith@example.com");
 
 		List<Person> residents = Arrays.asList(person1, person2);
 
-		when(personRepository.findByCity(city)).thenReturn(residents);
+		when(personCRUD.findByCity(city)).thenReturn(residents);
 
-		List<String> result = personService.getCommunityEmails(city);
+		CommunityEmailsDTO result = personService.getCommunityEmails(city);
 
 		assertNotNull(result);
-		assertEquals(2, result.size());
-		assertTrue(result.contains("john.doe@example.com"));
-		assertTrue(result.contains("jane.smith@example.com"));
+
+		List<String> expectedEmails = Arrays.asList("test@test.com", "jane.smith@example.com");
+		assertEquals(expectedEmails, result.getEmails());
 	}
 
 	@Test
-	public void testGetCommunityEmailsNoPerson() {
+	public void testGetCommunityEmailsNoPerson() throws IOException {
 		String city = "Culver";
 
-		when(personRepository.findByCity(city)).thenReturn(Arrays.asList());
+		when(personCRUD.findByCity(city)).thenReturn(Arrays.asList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 				() -> personService.getCommunityEmails(city));
@@ -383,6 +456,7 @@ public class PersonServiceTest {
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("No residents found for the city"));
 
-		verify(personRepository, times(1)).findByCity(city);
+		verify(personCRUD, times(1)).findByCity(city);
 	}
+
 }

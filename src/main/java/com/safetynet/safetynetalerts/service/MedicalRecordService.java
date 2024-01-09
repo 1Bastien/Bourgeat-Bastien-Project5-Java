@@ -1,9 +1,9 @@
 package com.safetynet.safetynetalerts.service;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,45 +12,40 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.safetynet.safetynetalerts.CRUD.MedicalRecordCRUD;
+import com.safetynet.safetynetalerts.CRUD.PersonCRUD;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
-import com.safetynet.safetynetalerts.model.Person;
-import com.safetynet.safetynetalerts.repository.MedicalRecordRepository;
-import com.safetynet.safetynetalerts.repository.PersonRepository;
 
 @Service
 public class MedicalRecordService {
 
 	private static final Logger logger = LogManager.getLogger("MedicalRecordService");
 
-	private MedicalRecordRepository medicalRecordRepository;
+	private MedicalRecordCRUD medicalRecordCRUD;
 
-	private PersonRepository personRepository;
+	private PersonCRUD personCRUD;
 
-	public MedicalRecordService(MedicalRecordRepository medicalRecordRepository, PersonRepository personRepository) {
-		this.medicalRecordRepository = medicalRecordRepository;
-		this.personRepository = personRepository;
+	public MedicalRecordService(MedicalRecordCRUD medicalRecordCRUD, PersonCRUD personCRUD) {
+		this.medicalRecordCRUD = medicalRecordCRUD;
+		this.personCRUD = personCRUD;
 	}
 
 	@Transactional
-	public MedicalRecord postMedicalRecord(String firstName, String lastName, MedicalRecord medicalRecord) {
-		Optional<Person> optionalPerson = personRepository.findByFirstNameAndLastName(firstName, lastName);
+	public MedicalRecord postMedicalRecord(MedicalRecord medicalRecord) throws IOException {
 
-		if (!optionalPerson.isPresent()) {
-			logger.error("This Person doesn't exists: ", medicalRecord.getPerson());
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This Person doesn't exists: ");
+		if (personCRUD.findByFirstNameAndLastName(medicalRecord.getFirstName(), medicalRecord.getLastName()) == null) {
+			logger.error("This person doesn't exist");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This person doesn't exist");
 		}
 
-		if (medicalRecordRepository.findByPerson(optionalPerson.get()).isPresent()) {
+		if (medicalRecordCRUD.findByFirstNameAndLastName(medicalRecord.getFirstName(),
+				medicalRecord.getLastName()) != null) {
 			logger.error("This medical record already exists: {}", medicalRecord);
-			throw new ResponseStatusException(HttpStatus.CONFLICT,
-					"This Medical record already exists");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This Medical record already exists");
 		}
 
 		try {
-			Person person = optionalPerson.get();
-			medicalRecord.setPerson(person);
-
-			return medicalRecordRepository.save(medicalRecord);
+			return medicalRecordCRUD.save(medicalRecord);
 		} catch (Exception e) {
 			logger.error("Unable to create a new medical record", e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create a new medical record",
@@ -59,22 +54,14 @@ public class MedicalRecordService {
 	}
 
 	@Transactional
-	public MedicalRecord putMedicalRecord(String firstName, String lastName, MedicalRecord newMedicalRecord) {
-		Optional<Person> personOptional = personRepository.findByFirstNameAndLastName(firstName, lastName);
-		if (personOptional.isEmpty()) {
-			logger.error("This person doesn't exist");
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This person doesn't exist");
-		}
+	public MedicalRecord putMedicalRecord(String firstName, String lastName, MedicalRecord newMedicalRecord)
+			throws IOException {
 
-		Person person = personOptional.get();
-
-		Optional<MedicalRecord> medicalRecordOptional = medicalRecordRepository.findByPerson(person);
-		if (medicalRecordOptional.isEmpty()) {
+		MedicalRecord medicalRecord = medicalRecordCRUD.findByFirstNameAndLastName(firstName, lastName);
+		if (medicalRecord == null) {
 			logger.error("This medical record doesn't exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This medical record doesn't exist");
 		}
-
-		MedicalRecord medicalRecord = medicalRecordOptional.get();
 
 		try {
 
@@ -82,7 +69,7 @@ public class MedicalRecordService {
 			medicalRecord.setMedications(newMedicalRecord.getMedications());
 			medicalRecord.setAllergies(newMedicalRecord.getAllergies());
 
-			medicalRecordRepository.save(medicalRecord);
+			medicalRecordCRUD.save(medicalRecord);
 
 			return medicalRecord;
 		} catch (Exception e) {
@@ -93,25 +80,16 @@ public class MedicalRecordService {
 	}
 
 	@Transactional
-	public String deleteMedicalRecord(String firstName, String lastName) {
-		Optional<Person> personOptional = personRepository.findByFirstNameAndLastName(firstName, lastName);
-		if (personOptional.isEmpty()) {
-			logger.error("This person doesn't exist");
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This person doesn't exist");
-		}
+	public String deleteMedicalRecord(String firstName, String lastName) throws IOException {
+		MedicalRecord medicalRecord = medicalRecordCRUD.findByFirstNameAndLastName(firstName, lastName);
 
-		Person person = personOptional.get();
-
-		Optional<MedicalRecord> medicalRecordOptional = medicalRecordRepository.findByPerson(person);
-		if (medicalRecordOptional.isEmpty()) {
+		if (medicalRecord == null) {
 			logger.error("This medical record doesn't exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This medical record doesn't exist");
 		}
 
-		MedicalRecord medicalRecord = medicalRecordOptional.get();
-
 		try {
-			medicalRecordRepository.delete(medicalRecord);
+			medicalRecordCRUD.delete(medicalRecord);
 			return "Medical record deleted";
 		} catch (Exception e) {
 			logger.error("Unable to delete this medical record", e);
@@ -121,7 +99,7 @@ public class MedicalRecordService {
 	}
 
 	public int calculateAge(String birthdate) {
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 		LocalDate birthdateDate = LocalDate.parse(birthdate, formatter);
 
 		LocalDate currentDate = LocalDate.now();

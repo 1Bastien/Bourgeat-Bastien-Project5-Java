@@ -13,13 +13,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,11 +27,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.safetynet.safetynetalerts.CRUD.FirestationCRUD;
+import com.safetynet.safetynetalerts.CRUD.MedicalRecordCRUD;
+import com.safetynet.safetynetalerts.CRUD.PersonCRUD;
+import com.safetynet.safetynetalerts.DTO.FirestationInfoDTO;
+import com.safetynet.safetynetalerts.DTO.PersonInfoDTO;
+import com.safetynet.safetynetalerts.DTO.PersonsByStationsDTO;
+import com.safetynet.safetynetalerts.DTO.PhoneNumbersDTO;
 import com.safetynet.safetynetalerts.model.Firestation;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
 import com.safetynet.safetynetalerts.model.Person;
-import com.safetynet.safetynetalerts.repository.FirestationRepository;
-import com.safetynet.safetynetalerts.repository.PersonRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class FirestationServiceTest {
@@ -41,32 +45,30 @@ public class FirestationServiceTest {
 	private FirestationService firestationService;
 
 	@Mock
-	private static FirestationRepository firestationRepository;
+	private static FirestationCRUD firestationCRUD;
 
 	@Mock
-	private static PersonRepository personRepository;
+	private static PersonCRUD personCRUD;
+
+	@Mock
+	private static MedicalRecordCRUD medicalRecordCRUD;
 
 	@Mock
 	private static MedicalRecordService medicalRecordService;
 
-	private static Firestation TEST_FIRESTATION;
-
-	@BeforeEach
-	public void setUpPerTest() {
-		TEST_FIRESTATION = new Firestation();
-		TEST_FIRESTATION.setAddress("1509 Culver St");
-		TEST_FIRESTATION.setStation(3);
-	}
-
 	@Test
-	public void testPostFirestation() {
-		when(firestationRepository.findByAddress(eq("1509 Culver St"))).thenReturn(Optional.empty());
-		when(firestationRepository.save(any(Firestation.class))).thenReturn(TEST_FIRESTATION);
+	public void testPostFirestation() throws IOException {
+		Firestation firestation = new Firestation();
+		firestation.setAddress("1509 Culver St");
+		firestation.setStation(3);
 
-		Firestation result = firestationService.postFirestation(TEST_FIRESTATION);
+		when(firestationCRUD.findByAddress(eq("1509 Culver St"))).thenReturn(null);
+		when(firestationCRUD.save(firestation)).thenReturn(firestation);
 
-		verify(firestationRepository, times(1)).findByAddress("1509 Culver St");
-		verify(firestationRepository, times(1)).save(TEST_FIRESTATION);
+		Firestation result = firestationService.postFirestation(firestation);
+
+		verify(firestationCRUD, times(1)).findByAddress("1509 Culver St");
+		verify(firestationCRUD, times(1)).save(firestation);
 
 		assertNotNull(result);
 		assertEquals("1509 Culver St", result.getAddress());
@@ -74,329 +76,291 @@ public class FirestationServiceTest {
 	}
 
 	@Test
-	public void testPostFirestationAlreadyExist() {
-		Firestation existingFirestation = new Firestation();
-		existingFirestation.setAddress("1509 Culver St");
-		existingFirestation.setStation(3);
+	public void testPostFirestationAlreadyExist() throws IOException {
+		Firestation firestation = new Firestation();
+		firestation.setAddress("1509 Culver St");
+		firestation.setStation(3);
 
+		when(firestationCRUD.findByAddress("1509 Culver St")).thenReturn(firestation);
+
+		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+				() -> firestationService.postFirestation(firestation));
+
+		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+		assertTrue(exception.getReason().contains("Firestation is already assigned for this address"));
+		assertTrue(exception.getReason().contains(firestation.getAddress()));
+
+		verify(firestationCRUD, times(1)).findByAddress(firestation.getAddress());
+		verify(firestationCRUD, never()).save(firestation);
+	}
+
+	@Test
+	public void testPutFirestation() throws IOException {
 		Firestation newFirestation = new Firestation();
 		newFirestation.setAddress("1509 Culver St");
 		newFirestation.setStation(4);
 
-		when(firestationRepository.findByAddress(anyString())).thenReturn(Optional.of(existingFirestation));
+		Firestation oldFirestation = new Firestation();
+		oldFirestation.setAddress("1509 Culver St");
+		oldFirestation.setStation(3);
 
-		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> firestationService.postFirestation(newFirestation));
-
-		assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-		assertTrue(exception.getReason().contains("Firestation is already assigned for this address"));
-		assertTrue(exception.getReason().contains(newFirestation.getAddress()));
-
-		verify(firestationRepository, times(1)).findByAddress(newFirestation.getAddress());
-		verify(firestationRepository, never()).save(newFirestation);
-	}
-
-	@Test
-	public void testPutFirestation() {
-		Firestation newFirestation = new Firestation();
-		newFirestation.setStation(4);
-
-		when(firestationRepository.findByAddress(eq("1509 Culver St"))).thenReturn(Optional.of(TEST_FIRESTATION));
-		when(firestationRepository.save(any(Firestation.class))).thenReturn(TEST_FIRESTATION);
+		when(firestationCRUD.findByAddress("1509 Culver St")).thenReturn(oldFirestation);
+		when(firestationCRUD.save(oldFirestation)).thenReturn(oldFirestation);
 
 		Firestation result = firestationService.putFirestation("1509 Culver St", newFirestation);
 
-		verify(firestationRepository, times(1)).findByAddress("1509 Culver St");
-		verify(firestationRepository, times(1)).save(TEST_FIRESTATION);
+		verify(firestationCRUD, times(1)).findByAddress("1509 Culver St");
+		verify(firestationCRUD, times(1)).save(oldFirestation);
 
 		assertNotNull(result);
 		assertEquals(4, result.getStation());
 	}
 
 	@Test
-	public void testPutFirestationNotFound() {
-		when(firestationRepository.findByAddress(anyString())).thenReturn(Optional.empty());
+	public void testPutFirestationNotFound() throws IOException {
+		Firestation newFirestation = new Firestation();
+		newFirestation.setAddress("1509 Culver St");
+		newFirestation.setStation(4);
+
+		when(firestationCRUD.findByAddress("1509 Culver St")).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> firestationService.putFirestation(TEST_FIRESTATION.getAddress(), TEST_FIRESTATION));
+				() -> firestationService.putFirestation("1509 Culver St", newFirestation));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This firestation doesn't exist"));
 
-		verify(firestationRepository, times(1)).findByAddress(TEST_FIRESTATION.getAddress());
-		verify(firestationRepository, never()).save(TEST_FIRESTATION);
+		verify(firestationCRUD, times(1)).findByAddress("1509 Culver St");
+		verify(firestationCRUD, never()).save(any());
 	}
 
 	@Test
-	public void testDeleteFirestation() {
-		when(firestationRepository.findByAddress(eq("1509 Culver St"))).thenReturn(Optional.of(TEST_FIRESTATION));
+	public void testDeleteFirestation() throws IOException {
+		Firestation firestation = new Firestation();
+		firestation.setAddress("1509 Culver St");
+		firestation.setStation(3);
+
+		when(firestationCRUD.findByAddress("1509 Culver St")).thenReturn(firestation);
 
 		String result = firestationService.deleteFirestation("1509 Culver St");
 
-		verify(firestationRepository, times(1)).findByAddress("1509 Culver St");
-		verify(firestationRepository, times(1)).delete(TEST_FIRESTATION);
+		verify(firestationCRUD, times(1)).findByAddress("1509 Culver St");
+		verify(firestationCRUD, times(1)).delete(firestation);
 
 		assertNotNull(result);
 		assertEquals("Firestation object deleted", result);
 	}
 
 	@Test
-	public void testDeleteFirestationNotFound() {
-		when(firestationRepository.findByAddress(anyString())).thenReturn(Optional.empty());
+	public void testDeleteFirestationNotFound() throws IOException {
+		when(firestationCRUD.findByAddress("1509 Culver St")).thenReturn(null);
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> firestationService.deleteFirestation(TEST_FIRESTATION.getAddress()));
+				() -> firestationService.deleteFirestation("1509 Culver St"));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("This firestation doesn't exist"));
 
-		verify(firestationRepository, times(1)).findByAddress(TEST_FIRESTATION.getAddress());
-		verify(firestationRepository, never()).delete(TEST_FIRESTATION);
+		verify(firestationCRUD, times(1)).findByAddress("1509 Culver St");
+		verify(firestationCRUD, never()).delete(any());
 	}
 
 	@Test
-	public void testGetListOfPersonByFirestation() {
+	public void testGetListOfPersonByFirestation() throws IOException {
+		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName("John");
+		medicalRecord.setLastName("Boyd");
+		medicalRecord.setBirthdate("03/06/1995");
+
+		List<Firestation> firestations = new ArrayList<>();
+		Firestation firestation = new Firestation();
+		firestation.setAddress("123 Main St");
+		firestation.setStation(1);
+		firestations.add(firestation);
+
+		List<Person> residents = new ArrayList<>();
 		Person person = new Person();
 		person.setFirstName("John");
 		person.setLastName("Boyd");
-		person.setAddress("1509 Culver St");
+		person.setAddress("123 Main St");
+		person.setPhone("123-456-7890");
 		person.setCity("Culver");
 		person.setZip("97451");
-		person.setPhone("841-874-6512");
-		person.setEmail("jaboyd@email.com");
+		person.setEmail("test@test.com");
+		residents.add(person);
 
-		MedicalRecord medicalRecord = new MedicalRecord();
-		medicalRecord.setBirthdate("03/06/1984");
-		medicalRecord.setPerson(person);
+		when(firestationCRUD.findAllByStation(anyInt())).thenReturn(firestations);
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(residents);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Boyd")).thenReturn(medicalRecord);
+		when(medicalRecordService.calculateAge(anyString())).thenReturn(28);
 
-		person.setMedicalRecord(medicalRecord);
+		FirestationInfoDTO firestationInfoDTO = firestationService.getListOfPersonByFirestation(1);
 
-		List<Firestation> firestations = Arrays.asList(TEST_FIRESTATION);
-		List<Person> residents = Arrays.asList(person);
+		verify(firestationCRUD, times(1)).findAllByStation(1);
+		verify(personCRUD, times(1)).findByAddress("123 Main St");
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("John", "Boyd");
+		verify(medicalRecordService, times(1)).calculateAge("03/06/1995");
 
-		when(firestationRepository.findAllByStation(3)).thenReturn(firestations);
-		when(personRepository.findByAddress(eq("1509 Culver St"))).thenReturn(residents);
-		when(medicalRecordService.calculateAge(person.getMedicalRecord().getBirthdate())).thenReturn(39);
-
-		List<Map<String, Object>> result = firestationService.getListOfPersonByFirestation(3);
-
-		verify(firestationRepository, times(1)).findAllByStation(3);
-		verify(personRepository, times(1)).findByAddress("1509 Culver St");
-		verify(medicalRecordService, times(1)).calculateAge("03/06/1984");
-
-		assertNotNull(result);
-
-		assertEquals(2, result.size());
-
-		Map<String, Object> personMap = result.get(0);
-		assertEquals("John", personMap.get("firstName"));
-		assertEquals("Boyd", personMap.get("lastName"));
-		assertEquals("1509 Culver St", personMap.get("address"));
-		assertEquals("841-874-6512", personMap.get("phone"));
-
-		Map<String, Object> countResult = result.get(1);
-		assertEquals(1, countResult.get("adultCount"));
-		assertEquals(0, countResult.get("childCount"));
+		assertNotNull(firestationInfoDTO);
+		assertEquals(1, firestationInfoDTO.getResidents().size());
+		assertEquals(1, firestationInfoDTO.getAdultCount());
+		assertEquals(0, firestationInfoDTO.getChildCount());
+		assertEquals("John", firestationInfoDTO.getResidents().get(0).getFirstName());
+		assertEquals("Boyd", firestationInfoDTO.getResidents().get(0).getLastName());
+		assertEquals("123 Main St", firestationInfoDTO.getResidents().get(0).getAddress());
+		assertEquals("123-456-7890", firestationInfoDTO.getResidents().get(0).getPhone());
 	}
 
 	@Test
-	public void testGetListOfPersonByFirestationWhenChild() {
-		Person person = new Person();
-		person.setFirstName("John");
-		person.setLastName("Boyd");
-		person.setAddress("1509 Culver St");
-		person.setCity("Culver");
-		person.setZip("97451");
-		person.setPhone("841-874-6512");
-		person.setEmail("jaboyd@email.com");
+	public void testGetListOfPersonByFirestationWhenChild() throws IOException {
 
 		MedicalRecord medicalRecord = new MedicalRecord();
+		medicalRecord.setFirstName("Marc");
+		medicalRecord.setLastName("Boyd");
 		medicalRecord.setBirthdate("03/06/2010");
-		medicalRecord.setPerson(person);
 
-		person.setMedicalRecord(medicalRecord);
+		List<Firestation> firestations = new ArrayList<>();
+		Firestation firestation = new Firestation();
+		firestation.setAddress("123 Main St");
+		firestation.setStation(1);
+		firestations.add(firestation);
 
-		List<Firestation> firestations = Arrays.asList(TEST_FIRESTATION);
-		List<Person> residents = Arrays.asList(person);
+		List<Person> residents = new ArrayList<>();
+		Person person = new Person();
+		person.setFirstName("Marc");
+		person.setLastName("Boyd");
+		person.setAddress("123 Main St");
+		person.setPhone("123-456-7890");
+		person.setCity("Culver");
+		person.setZip("97451");
+		person.setEmail("test@test.com");
+		residents.add(person);
 
-		when(firestationRepository.findAllByStation(3)).thenReturn(firestations);
-		when(personRepository.findByAddress(eq("1509 Culver St"))).thenReturn(residents);
-		when(medicalRecordService.calculateAge(person.getMedicalRecord().getBirthdate())).thenReturn(13);
+		when(firestationCRUD.findAllByStation(anyInt())).thenReturn(firestations);
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(residents);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("Marc", "Boyd")).thenReturn(medicalRecord);
+		when(medicalRecordService.calculateAge(anyString())).thenReturn(13);
 
-		List<Map<String, Object>> result = firestationService.getListOfPersonByFirestation(3);
+		FirestationInfoDTO firestationInfoDTO = firestationService.getListOfPersonByFirestation(1);
 
-		verify(firestationRepository, times(1)).findAllByStation(3);
-		verify(personRepository, times(1)).findByAddress("1509 Culver St");
+		verify(firestationCRUD, times(1)).findAllByStation(1);
+		verify(personCRUD, times(1)).findByAddress("123 Main St");
+		verify(medicalRecordCRUD, times(1)).findByFirstNameAndLastName("Marc", "Boyd");
 		verify(medicalRecordService, times(1)).calculateAge("03/06/2010");
 
-		assertNotNull(result);
-
-		assertEquals(2, result.size());
-
-		Map<String, Object> personMap = result.get(0);
-		assertEquals("John", personMap.get("firstName"));
-		assertEquals("Boyd", personMap.get("lastName"));
-		assertEquals("1509 Culver St", personMap.get("address"));
-		assertEquals("841-874-6512", personMap.get("phone"));
-
-		Map<String, Object> countResult = result.get(1);
-		assertEquals(0, countResult.get("adultCount"));
-		assertEquals(1, countResult.get("childCount"));
+		assertNotNull(firestationInfoDTO);
+		assertEquals(1, firestationInfoDTO.getResidents().size());
+		assertEquals(0, firestationInfoDTO.getAdultCount());
+		assertEquals(1, firestationInfoDTO.getChildCount());
+		assertEquals("Marc", firestationInfoDTO.getResidents().get(0).getFirstName());
+		assertEquals("Boyd", firestationInfoDTO.getResidents().get(0).getLastName());
+		assertEquals("123 Main St", firestationInfoDTO.getResidents().get(0).getAddress());
+		assertEquals("123-456-7890", firestationInfoDTO.getResidents().get(0).getPhone());
 	}
 
 	@Test
-	public void testGetListOfPersonByFirestationNotFound() {
-		when(firestationRepository.findAllByStation(anyInt())).thenReturn(Collections.emptyList());
+	public void testGetListOfPersonByFirestationNotFound() throws IOException {
+		when(firestationCRUD.findAllByStation(anyInt())).thenReturn(Collections.emptyList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 				() -> firestationService.getListOfPersonByFirestation(3));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-		assertTrue(exception.getReason().contains("This firestation doesn't exist"));
+		assertTrue(exception.getReason().contains("No firestation found for this number"));
 
-		verify(firestationRepository, times(1)).findAllByStation(3);
-		verify(personRepository, never()).findByAddress(anyString());
+		verify(firestationCRUD, times(1)).findAllByStation(3);
+		verify(personCRUD, never()).findByAddress(anyString());
 		verify(medicalRecordService, never()).calculateAge(anyString());
 	}
 
 	@Test
-	public void testGetPhoneNumbersByFirestation() {
+	public void testGetPhoneNumbersByFirestation() throws IOException {
+		List<Firestation> firestations = new ArrayList<>();
 		Firestation firestation = new Firestation();
-		firestation.setStation(1);
 		firestation.setAddress("123 Main St");
+		firestation.setStation(1);
+		firestations.add(firestation);
 
-		Person person1 = new Person();
-		person1.setPhone("111-222-3333");
+		List<Person> residents = new ArrayList<>();
+		Person person = new Person();
+		person.setFirstName("John");
+		person.setLastName("Boyd");
+		person.setAddress("123 Main St");
+		person.setPhone("123-456-7890");
+		person.setCity("Culver");
+		person.setZip("97451");
+		person.setEmail("test@test.com");
+		residents.add(person);
 
-		Person person2 = new Person();
-		person2.setPhone("444-555-6666");
+		when(firestationCRUD.findAllByStation(1)).thenReturn(firestations);
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(residents);
 
-		List<Firestation> firestations = Arrays.asList(firestation);
-		List<Person> residents = Arrays.asList(person1, person2);
+		PhoneNumbersDTO result = firestationService.getPhoneNumbersByFirestation(1);
 
-		when(firestationRepository.findAllByStation(anyInt())).thenReturn(firestations);
-		when(personRepository.findByAddress("123 Main St")).thenReturn(residents);
-
-		List<String> result = firestationService.getPhoneNumbersByFirestation(1);
-
-		verify(firestationRepository, times(1)).findAllByStation(1);
-		verify(personRepository, times(1)).findByAddress("123 Main St");
+		verify(firestationCRUD, times(1)).findAllByStation(1);
+		verify(personCRUD, times(1)).findByAddress("123 Main St");
 
 		assertNotNull(result);
-		assertEquals(2, result.size());
-		assertTrue(result.contains("111-222-3333"));
-		assertTrue(result.contains("444-555-6666"));
+		assertEquals(1, result.getPhoneNumbers().size());
+		assertEquals("123-456-7890", result.getPhoneNumbers().get(0));
 	}
 
 	@Test
-	public void testGetPhoneNumbersByFirestationNotFound() {
-		when(firestationRepository.findAllByStation(TEST_FIRESTATION.getStation())).thenReturn(Arrays.asList());
+	public void testGetPhoneNumbersByFirestationNotFound() throws IOException {
+		when(firestationCRUD.findAllByStation(anyInt())).thenReturn(Collections.emptyList());
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-				() -> firestationService.getPhoneNumbersByFirestation(TEST_FIRESTATION.getStation()));
+				() -> firestationService.getPhoneNumbersByFirestation(1));
 
 		assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
 		assertTrue(exception.getReason().contains("No firestation found for this number"));
 
-		verify(firestationRepository, times(1)).findAllByStation(TEST_FIRESTATION.getStation());
-		verify(personRepository, never()).findByAddress(anyString());
+		verify(firestationCRUD, times(1)).findAllByStation(1);
+		verify(personCRUD, never()).findByAddress(anyString());
 	}
 
 	@Test
-	public void testGetPersonsByStations() {
+	public void testGetPersonsByStations() throws IOException {
+		List<Firestation> firestations = new ArrayList<>();
 		Firestation firestation1 = new Firestation();
 		firestation1.setStation(1);
 		firestation1.setAddress("123 Main St");
 
-		Firestation firestation2 = new Firestation();
-		firestation2.setStation(2);
-		firestation2.setAddress("456 Oak St");
+		firestations.add(firestation1);
 
-		List<Firestation> firestations1 = Arrays.asList(firestation1);
-		List<Firestation> firestations2 = Arrays.asList(firestation2);
-
+		List<Person> address1 = new ArrayList<>();
 		Person person1 = new Person();
-		person1.setAddress("123 Main St");
 		person1.setFirstName("John");
 		person1.setLastName("Doe");
-		person1.setPhone("111-222-3333");
+		person1.setAddress("123 Main St");
+		person1.setPhone("123-456-7890");
 
 		MedicalRecord medicalRecord1 = new MedicalRecord();
-		medicalRecord1.setBirthdate("01/15/1980");
-		medicalRecord1.setMedications(Arrays.asList("Med1", "Med2"));
-		medicalRecord1.setAllergies(Arrays.asList("Allergy1", "Allergy2"));
-		person1.setMedicalRecord(medicalRecord1);
+		medicalRecord1.setFirstName("John");
+		medicalRecord1.setLastName("Doe");
+		medicalRecord1.setBirthdate("03/06/1995");
 
-		Person person2 = new Person();
-		person2.setAddress("456 Oak St");
-		person2.setFirstName("Jane");
-		person2.setLastName("Smith");
-		person2.setPhone("444-555-6666");
+		address1.add(person1);
 
-		MedicalRecord medicalRecord2 = new MedicalRecord();
-		medicalRecord2.setBirthdate("05/20/1995");
-		medicalRecord2.setMedications(Arrays.asList("Med3", "Med4"));
-		medicalRecord2.setAllergies(Arrays.asList("Allergy3", "Allergy4"));
-		person2.setMedicalRecord(medicalRecord2);
+		when(firestationCRUD.findAllByStation(1)).thenReturn(firestations);
 
-		List<Person> persons1 = Arrays.asList(person1);
-		List<Person> persons2 = Arrays.asList(person2);
+		when(personCRUD.findByAddress("123 Main St")).thenReturn(address1);
 
-		when(firestationRepository.findAllByStation(1)).thenReturn(firestations1);
-		when(firestationRepository.findAllByStation(2)).thenReturn(firestations2);
-		when(personRepository.findByAddress("123 Main St")).thenReturn(persons1);
-		when(personRepository.findByAddress("456 Oak St")).thenReturn(persons2);
-		when(medicalRecordService.calculateAge("01/15/1980")).thenReturn(42);
-		when(medicalRecordService.calculateAge("05/20/1995")).thenReturn(27);
+		when(medicalRecordCRUD.findByFirstNameAndLastName("John", "Doe")).thenReturn(medicalRecord1);
+		when(medicalRecordService.calculateAge("03/06/1995")).thenReturn(28);
 
-		List<Map<String, Object>> result = firestationService.getPersonsByStations(Arrays.asList(1, 2));
-
-		verify(firestationRepository, times(2)).findAllByStation(anyInt());
-		verify(personRepository, times(1)).findByAddress("123 Main St");
-		verify(personRepository, times(1)).findByAddress("456 Oak St");
-		verify(medicalRecordService, times(1)).calculateAge("01/15/1980");
-		verify(medicalRecordService, times(1)).calculateAge("05/20/1995");
+		PersonsByStationsDTO result = firestationService.getPersonsByStations(Arrays.asList(1));
 
 		assertNotNull(result);
-		assertEquals(2, result.size());
+		List<PersonInfoDTO> personInfoDTOList = result.getPersonsByStations();
+		assertEquals(1, personInfoDTOList.size());
 
-		Map<String, Object> personMap1 = result.get(0);
-		assertEquals("123 Main St", personMap1.get("address"));
-		assertEquals("John", personMap1.get("firstName"));
-		assertEquals("Doe", personMap1.get("lastName"));
-		assertEquals("111-222-3333", personMap1.get("phone"));
-		assertEquals(42, personMap1.get("age"));
-
-		@SuppressWarnings("unchecked")
-		List<String> medications1 = (List<String>) personMap1.get("medications");
-		@SuppressWarnings("unchecked")
-		List<String> allergies1 = (List<String>) personMap1.get("allergies");
-
-		assertNotNull(medications1);
-		assertNotNull(allergies1);
-		assertEquals(2, medications1.size());
-		assertEquals(2, allergies1.size());
-
-		assertEquals(1, personMap1.get("firestationNumber"));
-
-		Map<String, Object> personMap2 = result.get(1);
-		assertEquals("456 Oak St", personMap2.get("address"));
-		assertEquals("Jane", personMap2.get("firstName"));
-		assertEquals("Smith", personMap2.get("lastName"));
-		assertEquals("444-555-6666", personMap2.get("phone"));
-		assertEquals(27, personMap2.get("age"));
-
-		@SuppressWarnings("unchecked")
-		List<String> medications2 = (List<String>) personMap2.get("medications");
-		@SuppressWarnings("unchecked")
-		List<String> allergies2 = (List<String>) personMap2.get("allergies");
-
-		assertNotNull(medications2);
-		assertNotNull(allergies2);
-		assertEquals(2, medications2.size());
-		assertEquals(2, allergies2.size());
-
-		assertEquals(2, personMap2.get("firestationNumber"));
+		PersonInfoDTO personInfoDTO1 = personInfoDTOList.get(0);
+		assertEquals("123 Main St", personInfoDTO1.getAddress());
+		assertEquals("John", personInfoDTO1.getFirstName());
+		assertEquals("Doe", personInfoDTO1.getLastName());
+		assertEquals("123-456-7890", personInfoDTO1.getPhone());
+		assertEquals(28, personInfoDTO1.getAge());
 	}
 
 }
