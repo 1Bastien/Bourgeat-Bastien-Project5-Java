@@ -4,12 +4,19 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.safetynet.safetynetalerts.model.Firestation;
 import com.safetynet.safetynetalerts.model.MedicalRecord;
 import com.safetynet.safetynetalerts.model.Person;
 
+@Service
 public class DataStore {
+
+	@Value("${json.file.path}")
+	private String jsonFilePath;
 
 	private List<Person> persons;
 
@@ -18,15 +25,8 @@ public class DataStore {
 	private List<MedicalRecord> medicalrecords;
 
 	public void saveToFile(ObjectMapper objectMapper) throws IOException {
-		File file = new File("src/main/resources/data.json");
-
-		try {
-			objectMapper.writeValue(file, this);
-			System.out.println("Data successfully saved to file.");
-		} catch (IOException e) {
-			System.err.println("Error saving data to file: " + e.getMessage());
-			throw e;
-		}
+		File file = new File(jsonFilePath);
+		objectMapper.writeValue(file, this);
 	}
 
 	public List<Person> getPersons() {
