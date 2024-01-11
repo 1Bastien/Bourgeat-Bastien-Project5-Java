@@ -7,7 +7,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.safetynet.safetynetalerts.CRUD.FirestationCRUD;
@@ -42,7 +41,6 @@ public class FirestationService {
 		this.medicalRecordService = medicalRecordService;
 	}
 
-	@Transactional
 	public Firestation postFirestation(Firestation firestation) {
 		if (firestationCRUD.findByAddress(firestation.getAddress()) != null) {
 			logger.error("This Firestation already exist :", firestation);
@@ -60,7 +58,6 @@ public class FirestationService {
 		}
 	}
 
-	@Transactional
 	public Firestation putFirestation(String address, Firestation newFirestation) {
 		Firestation oldFirestation = firestationCRUD.findByAddress(address);
 		if (oldFirestation == null) {
@@ -83,7 +80,6 @@ public class FirestationService {
 		}
 	}
 
-	@Transactional
 	public String deleteFirestation(String address) {
 		Firestation firestation = firestationCRUD.findByAddress(address);
 		if (firestation == null) {
@@ -103,7 +99,6 @@ public class FirestationService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public FirestationInfoDTO getListOfPersonByFirestation(int stationNumber) {
 		List<Firestation> firestations = firestationCRUD.findAllByStation(stationNumber);
 
@@ -153,7 +148,6 @@ public class FirestationService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public PhoneNumbersDTO getPhoneNumbersByFirestation(int firestationNumber) {
 		List<Firestation> firestations = firestationCRUD.findAllByStation(firestationNumber);
 
@@ -184,7 +178,6 @@ public class FirestationService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public PersonsByStationsDTO getPersonsByStations(List<Integer> stationNumbers) {
 		try {
 			PersonsByStationsDTO personsByStationsDTO = new PersonsByStationsDTO();

@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.safetynet.safetynetalerts.CRUD.MedicalRecordCRUD;
@@ -30,7 +29,6 @@ public class MedicalRecordService {
 		this.personCRUD = personCRUD;
 	}
 
-	@Transactional
 	public MedicalRecord postMedicalRecord(MedicalRecord medicalRecord) throws IOException {
 
 		if (personCRUD.findByFirstNameAndLastName(medicalRecord.getFirstName(), medicalRecord.getLastName()) == null) {
@@ -53,7 +51,6 @@ public class MedicalRecordService {
 		}
 	}
 
-	@Transactional
 	public MedicalRecord putMedicalRecord(String firstName, String lastName, MedicalRecord newMedicalRecord)
 			throws IOException {
 
@@ -79,7 +76,6 @@ public class MedicalRecordService {
 		}
 	}
 
-	@Transactional
 	public String deleteMedicalRecord(String firstName, String lastName) throws IOException {
 		MedicalRecord medicalRecord = medicalRecordCRUD.findByFirstNameAndLastName(firstName, lastName);
 

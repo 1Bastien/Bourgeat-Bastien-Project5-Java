@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.safetynet.safetynetalerts.CRUD.FirestationCRUD;
@@ -44,7 +43,6 @@ public class PersonService {
 		this.firestationCRUD = firestationCRUD;
 	}
 
-	@Transactional
 	public Person postPerson(Person person) throws IOException {
 
 		if (personCRUD.findByFirstNameAndLastName(person.getFirstName(), person.getLastName()) != null) {
@@ -61,7 +59,6 @@ public class PersonService {
 		}
 	}
 
-	@Transactional
 	public Person putPerson(String firstName, String lastName, Person newPerson) throws IOException {
 		Person oldPerson = personCRUD.findByFirstNameAndLastName(firstName, lastName);
 		if (oldPerson == null) {
@@ -85,7 +82,6 @@ public class PersonService {
 		}
 	}
 
-	@Transactional
 	public String deletePerson(String firstName, String lastName) throws IOException {
 		Person person = personCRUD.findByFirstNameAndLastName(firstName, lastName);
 		if (person == null) {
@@ -103,7 +99,6 @@ public class PersonService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public ListChildDTO getChildsByAddress(String address) {
 		try {
 			List<Person> persons = personCRUD.findByAddress(address);
@@ -146,7 +141,6 @@ public class PersonService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public ResidentsAndFirestationDTO getResidentsAndFirestationByAddress(String address) throws IOException {
 		List<Person> residents = personCRUD.findByAddress(address);
 
@@ -197,7 +191,6 @@ public class PersonService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public PersonInfoDTO getPersonInfoByFirstNameAndLastName(String firstName, String lastName) throws IOException {
 		Person person = personCRUD.findByFirstNameAndLastName(firstName, lastName);
 		if (person == null) {
@@ -228,7 +221,6 @@ public class PersonService {
 		}
 	}
 
-	@Transactional(readOnly = true)
 	public CommunityEmailsDTO getCommunityEmails(String city) throws IOException {
 		List<Person> residents = personCRUD.findByCity(city);
 
