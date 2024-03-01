@@ -28,3 +28,20 @@ Les consignes pour ce projet sont les suivantes :
 - Respecter l'architecture modèle-vue-contrôleur.
 - Fournir des tests unitaires pour valider le bon fonctionnement de l'application.
 - Logger chaque requête et chaque réponse.
+
+## Prérequis
+
+- Java
+- Maven
+
+## Installation
+
+```bash
+git clone https://github.com/1Bastien/Bourgeat-Bastien-Project5-Java
+```
+```
+cd Bourgeat-Bastien-Project5-Java
+```
+```
+mvn spring-boot:run
+```
